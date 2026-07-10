@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="courtTitle">
+  <title id="courtTitle">Illustrazione stilizzata di un campo da tennis visto dall'alto</title>
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111318" />
+      <stop offset="100%" stop-color="#1b1e25" />
+    </linearGradient>
+    <linearGradient id="courtGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2d6b38" />
+      <stop offset="100%" stop-color="#1c4a24" />
+    </linearGradient>
+    <radialGradient id="ballGrad" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#e7ff8f" />
+      <stop offset="100%" stop-color="#8bc22c" />
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4fae2e" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#4fae2e" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bgGrad)" />
+  <circle cx="1180" cy="220" r="420" fill="url(#glow)" />
+
+  <g transform="rotate(-3 800 450)">
+    <!-- Doubles alleys (outer court) -->
+    <rect x="330" y="232" width="940" height="436" rx="10" fill="#173c1d" />
+    <!-- Singles court surface -->
+    <rect x="378" y="283" width="844" height="334" fill="url(#courtGrad)" />
+
+    <!-- Outer boundary (doubles) -->
+    <rect x="330" y="232" width="940" height="436" rx="10" fill="none" stroke="#f4f6f2" stroke-opacity="0.9" stroke-width="5" />
+    <!-- Singles sidelines -->
+    <rect x="378" y="283" width="844" height="334" fill="none" stroke="#f4f6f2" stroke-opacity="0.9" stroke-width="4" />
+
+    <!-- Service lines -->
+    <line x1="558" y1="283" x2="558" y2="617" stroke="#f4f6f2" stroke-opacity="0.85" stroke-width="4" />
+    <line x1="1042" y1="283" x2="1042" y2="617" stroke="#f4f6f2" stroke-opacity="0.85" stroke-width="4" />
+    <!-- Center service line -->
+    <line x1="558" y1="450" x2="1042" y2="450" stroke="#f4f6f2" stroke-opacity="0.85" stroke-width="4" />
+
+    <!-- Baseline center marks -->
+    <line x1="330" y1="450" x2="352" y2="450" stroke="#f4f6f2" stroke-opacity="0.85" stroke-width="4" />
+    <line x1="1248" y1="450" x2="1270" y2="450" stroke="#f4f6f2" stroke-opacity="0.85" stroke-width="4" />
+
+    <!-- Net -->
+    <line x1="800" y1="222" x2="800" y2="678" stroke="#e7e9ec" stroke-opacity="0.55" stroke-width="10" />
+    <line x1="800" y1="222" x2="800" y2="678" stroke="#0f1012" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="2 10" />
+  </g>
+
+  <!-- Tennis ball -->
+  <g transform="translate(1250 160)">
+    <circle r="58" fill="url(#ballGrad)" />
+    <path d="M -40 -34 Q 0 0 -40 34" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="4" />
+    <path d="M 40 -34 Q 0 0 40 34" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="4" />
+  </g>
+</svg>
