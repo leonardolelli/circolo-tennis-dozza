@@ -38,7 +38,9 @@ export function ForgotPasswordForm({
       if (error) throw error;
       setSuccess(true);
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(
+        error instanceof Error ? error.message : "Si è verificato un errore",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -49,22 +51,22 @@ export function ForgotPasswordForm({
       {success ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Password reset instructions sent</CardDescription>
+            <CardTitle className="text-2xl">Controlla la tua email</CardTitle>
+            <CardDescription>Istruzioni per il reset inviate</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              If you registered using your email and password, you will receive
-              a password reset email.
+              Se l&apos;indirizzo corrisponde a un account amministratore,
+              riceverai un&apos;email per reimpostare la password.
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+            <CardTitle className="text-2xl">Reimposta la password</CardTitle>
             <CardDescription>
-              Type in your email and we&apos;ll send you a link to reset your
+              Inserisci la tua email: ti invieremo un link per reimpostare la
               password
             </CardDescription>
           </CardHeader>
@@ -76,24 +78,21 @@ export function ForgotPasswordForm({
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
+                    placeholder="admin@circolotennisdozza.it"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send reset email"}
+                  {isLoading ? "Invio in corso..." : "Invia email di reset"}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="underline underline-offset-4"
-                >
-                  Login
+                Hai già un account?{" "}
+                <Link href="/login" className="underline underline-offset-4">
+                  Accedi
                 </Link>
               </div>
             </form>

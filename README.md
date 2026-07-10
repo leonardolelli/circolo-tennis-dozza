@@ -1,53 +1,85 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+<h1 align="center">🎾 Circolo Tennis Dozza</h1>
 
 <p align="center">
- The fastest way to build apps with Next.js and Supabase
+  Web app del circolo: classifica interna in stile Elo, sfide via WhatsApp,
+  cronologia partite e dashboard amministrativa.
+  Costruita con Next.js (App Router), TypeScript, Tailwind CSS e Supabase.
 </p>
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## Stack
 
-## Features
+- **Next.js 16** (App Router, React Server Components, Server Actions, Cache Components)
+- **TypeScript** rigoroso, con i tipi del database generati a mano in [lib/database.types.ts](lib/database.types.ts)
+- **Tailwind CSS** + primitivi in stile shadcn/ui (`components/ui`)
+- **Supabase** (Postgres, Auth, Row Level Security) tramite `@supabase/ssr`
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+## Funzionalità
 
-## Demo
+- **Home**: hero, griglia sponsor, contatti rapidi (chiamata / WhatsApp) della segreteria.
+- **Classifica**: elenco soci ordinato per punti, sfida via WhatsApp protetta da PIN, form
+  "Aggiungi risultato" a step (identità + PIN → avversario → esito e punteggio).
+- **Cronologia match**: storico paginato (10 per pagina), filtrabile per nome/esito e
+  ordinabile per data.
+- **Admin** (`/admin`, protetto da middleware + Supabase Auth): statistiche del circolo,
+  gestione soci, aggiunta nuovi soci con PIN a 8 cifre.
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+## Configurazione
 
-## Deploy to Vercel
+1. Crea un progetto su [Supabase](https://supabase.com) ed esegui lo script
+   [supabase/schema.sql](supabase/schema.sql) nel SQL Editor: crea le tabelle
+   `soci`, `partite`, `sponsor`, le policy di Row Level Security e la funzione
+   `apply_match_result` usata per registrare i risultati in modo atomico.
+2. Copia `.env.example` in `.env.local` e compila le variabili con i valori del
+   tuo progetto Supabase (Project Settings → API).
+3. Crea il primo account amministratore da **Supabase Dashboard → Authentication
+   → Users → Add user** (email + password): non esiste una pagina di
+   registrazione pubblica, per design.
+4. Installa le dipendenze e avvia il progetto:
 
-Vercel deployment will guide you through creating a Supabase account and project.
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+5. Accedi come admin da `/login` e aggiungi i soci da `/admin/soci`.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+## Modello di sicurezza (riassunto)
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+- Le chiavi pubbliche (`anon`) possono solo leggere; per `soci` vedono unicamente
+  le colonne pubbliche (mai `pin`, e `telefono` solo per sessioni admin autenticate).
+- Ogni scrittura passa da una Server Action che verifica prima l'autorizzazione
+  (sessione admin per la gestione soci, PIN con bcrypt per le partite e le sfide)
+  e solo dopo usa la chiave `service_role` (segreta, solo server) per bypassare la RLS.
+- Il calcolo del punteggio (stile Elo, vedi [lib/elo.ts](lib/elo.ts)) vive in
+  TypeScript; la scrittura atomica (aggiornamento punti + storico) è isolata in
+  un'unica funzione SQL (`apply_match_result`) con row locking, per evitare
+  aggiornamenti persi in caso di invii concorrenti.
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+## Struttura del progetto
+
+```
+app/
+  (main)/             Home, Classifica, Cronologia (con Sidebar/Bottom Nav)
+  admin/               Dashboard e gestione soci, protetti da proxy.ts
+  login/               Accesso amministratore (Supabase Auth)
+  auth/                Flussi di recupero password
+  actions/             Server Actions (soci, partite, sfide WhatsApp, PIN)
+components/
+  classifica/          Ranking, dialog sfida, wizard "aggiungi risultato"
+  cronologia/           Tabella, filtri, ordinamento
+  admin/               Nav, statistiche, form soci
+  layout/              Sidebar desktop, bottom nav mobile
+  ui/                  Primitivi (shadcn/ui style)
+lib/
+  data/                Query cache()-ate riutilizzabili tra componenti
+  supabase/            Client browser/server/service-role
+  elo.ts               Algoritmo di calcolo punteggio
+  whatsapp.ts          Costruzione link wa.me
+  validation.ts        Schemi zod per gli input delle Server Action
+supabase/
+  schema.sql           Schema completo (tabelle, RLS, funzione SQL)
+```
+
 
 ## Clone and run locally
 
