@@ -9,11 +9,11 @@ export const CLUB_TAGLINE =
 
 export const CLUB_CONTACT = {
   /** Displayed phone number, also used for the "Chiama" quick action. */
-  phoneDisplay: "+393342851560",
+  phoneDisplay: "+393425591296",
   /** E.164-ish value used to build the tel: link. */
-  phoneHref: "+393342851560",
+  phoneHref: "+393425591296",
   /** Number used for the WhatsApp quick action (Italian mobile, no "+"). */
-  whatsappNumber: "3342851560",
+  whatsappNumber: "3425591296",
   email: "virtus2000asd.dozza@gmail.com",
   address: "Via Monte del Re 20, 40060 Dozza (BO)",
 } as const
