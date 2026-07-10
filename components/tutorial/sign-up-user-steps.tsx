@@ -8,7 +8,7 @@ export function SignUpUserSteps() {
       {process.env.VERCEL_ENV === "preview" ||
       process.env.VERCEL_ENV === "production" ? (
         <TutorialStep title="Set up redirect urls">
-          <p>It looks like this App is hosted on Vercel.</p>
+          <p>It looks like this App is hosted on Vercel. Test deployment.</p>
           <p className="mt-4">
             This particular deployment is
             <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
