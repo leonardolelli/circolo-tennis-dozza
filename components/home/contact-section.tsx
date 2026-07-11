@@ -1,4 +1,4 @@
-import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Camera, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,15 @@ export function ContactSection() {
               <Phone className="h-4 w-4 shrink-0 text-tennis" />
               {CLUB_CONTACT.phoneDisplay}
             </span>
+            <a
+              href={CLUB_CONTACT.instagram}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 transition-colors hover:text-tennis hover:underline"
+            >
+              <Camera className="h-4 w-4 shrink-0 text-tennis" />
+              tennis_dozza
+            </a>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg">
