@@ -16,6 +16,7 @@ export const CLUB_CONTACT = {
   whatsappNumber: "3425591296",
   email: "virtus2000asd.dozza@gmail.com",
   address: "Via Monte del Re 20, 40060 Dozza (BO)",
+  instagram: "https://www.instagram.com/tennis_dozza/",
 } as const
 
 export const SITE_NAV_ITEMS = [
