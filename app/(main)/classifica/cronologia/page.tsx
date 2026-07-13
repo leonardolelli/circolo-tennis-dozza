@@ -5,11 +5,12 @@ import { MatchesFilters } from "@/components/cronologia/matches-filters";
 import { MatchesTable } from "@/components/cronologia/matches-table";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { copy } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
 import type { Partita } from "@/lib/types";
 
 export const metadata = {
-  title: "Cronologia match",
+  title: copy.cronologia.title,
 };
 
 const PAGE_SIZE = 5;
@@ -37,10 +38,10 @@ export default function CronologiaPage({ searchParams }: CronologiaPageProps) {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Cronologia match
+          {copy.cronologia.title}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Storico di tutte le partite registrate dai soci.
+          {copy.cronologia.subtitle}
         </p>
       </div>
 

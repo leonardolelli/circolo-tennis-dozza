@@ -129,7 +129,7 @@ export function PlayerCombobox({
         )}
         {isOpen && query.trim().length > 0 && candidates.length === 0 && (
           <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow-md">
-            Nessun socio trovato.
+            Nessun giocatore trovato.
           </div>
         )}
       </div>

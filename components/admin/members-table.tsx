@@ -47,7 +47,7 @@ export function MembersTable({ members }: { members: SocioAdmin[] }) {
   if (members.length === 0) {
     return (
       <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
-        Nessun socio trovato.
+        Nessun giocatore trovato.
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function MembersTable({ members }: { members: SocioAdmin[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Socio</TableHead>
+              <TableHead>Giocatore</TableHead>
               <TableHead className="hidden sm:table-cell">Telefono</TableHead>
               <TableHead className="hidden md:table-cell">Stato</TableHead>
               <TableHead className="text-right">Punti</TableHead>
@@ -122,7 +122,7 @@ export function MembersTable({ members }: { members: SocioAdmin[] }) {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Azioni socio</span>
+                        <span className="sr-only">Azioni giocatore</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -148,8 +148,8 @@ export function MembersTable({ members }: { members: SocioAdmin[] }) {
                             }
                             toast.success(
                               member.congelato
-                                ? "Socio riattivato."
-                                : "Socio congelato.",
+                                ? "Giocatore riattivato."
+                                : "Giocatore congelato.",
                             );
                             router.refresh();
                           });
@@ -206,7 +206,7 @@ function EditMemberDialog({
 
   useEffect(() => {
     if (state?.success) {
-      toast.success("Socio aggiornato.");
+      toast.success("Giocatore aggiornato.");
       onOpenChange(false);
       router.refresh();
     } else if (state && !state.success) {
@@ -218,9 +218,9 @@ function EditMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifica socio</DialogTitle>
+          <DialogTitle>Modifica giocatore</DialogTitle>
           <DialogDescription>
-            Aggiorna i dati anagrafici del socio selezionato.
+            Aggiorna i dati anagrafici del giocatore selezionato.
           </DialogDescription>
         </DialogHeader>
         {member && (
@@ -276,9 +276,9 @@ function DeleteMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Elimina socio</DialogTitle>
+          <DialogTitle>Elimina giocatore</DialogTitle>
           <DialogDescription>
-            Questa operazione è disponibile solo per soci senza match registrati.
+            Questa operazione è disponibile solo per giocatori senza match registrati.
           </DialogDescription>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
@@ -299,7 +299,7 @@ function DeleteMemberDialog({
                   toast.error(result.error);
                   return;
                 }
-                toast.success("Socio eliminato.");
+                toast.success("Giocatore eliminato.");
                 onOpenChange(false);
                 router.refresh();
               });

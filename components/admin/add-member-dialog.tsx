@@ -31,7 +31,7 @@ export function AddMemberDialog() {
 
   useEffect(() => {
     if (state?.success) {
-      toast.success("Socio aggiunto con successo.");
+      toast.success("Giocatore aggiunto con successo.");
       formRef.current?.reset();
       setOpen(false);
       router.refresh();
@@ -43,15 +43,15 @@ export function AddMemberDialog() {
       <DialogTrigger asChild>
         <Button className="bg-tennis text-tennis-foreground hover:bg-tennis/90">
           <UserPlus className="h-4 w-4" />
-          Aggiungi socio
+          Aggiungi giocatore
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Aggiungi socio</DialogTitle>
+          <DialogTitle>Aggiungi giocatore</DialogTitle>
           <DialogDescription>
-            Il PIN verrà usato dal socio per registrare i risultati e sfidare
-            altri soci: comunicalo solo a lui.
+            Il PIN verra usato dal giocatore per registrare i risultati e sfidare
+            altri giocatori: comunicalo solo a lui.
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} action={formAction} className="flex flex-col gap-4">
@@ -108,7 +108,7 @@ export function AddMemberDialog() {
               disabled={isPending}
               className="bg-tennis text-tennis-foreground hover:bg-tennis/90"
             >
-              {isPending ? "Salvataggio..." : "Aggiungi socio"}
+              {isPending ? "Salvataggio..." : "Aggiungi giocatore"}
             </Button>
           </DialogFooter>
         </form>

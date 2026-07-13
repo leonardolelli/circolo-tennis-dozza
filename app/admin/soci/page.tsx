@@ -5,11 +5,12 @@ import { AddMemberDialog } from "@/components/admin/add-member-dialog";
 import { MembersTable } from "@/components/admin/members-table";
 import { MembersSearch } from "@/components/admin/members-search";
 import { Skeleton } from "@/components/ui/skeleton";
+import { copy } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
 import type { SocioAdmin } from "@/lib/types";
 
 export const metadata = {
-  title: "Soci",
+  title: copy.admin.players.title,
 };
 
 const PATHNAME = "/admin/soci";
@@ -24,10 +25,10 @@ export default function AdminSociPage({ searchParams }: AdminSociPageProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Soci
+            {copy.admin.players.title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Elenco dei soci del circolo.
+            {copy.admin.players.subtitle}
           </p>
         </div>
         <AddMemberDialog />
@@ -70,7 +71,7 @@ async function SociContent({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        {members.length} soci registrati.
+        {members.length} giocatori registrati.
       </p>
       <MembersSearch pathname={PATHNAME} query={query} />
       <MembersTable members={members} />

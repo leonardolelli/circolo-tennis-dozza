@@ -242,7 +242,7 @@ function EditMatchDialog({
             <input type="hidden" name="data" value={dateValue ? toUtcIsoValue(dateValue) : ""} />
 
             <PlayerCombobox
-              label="Socio che ha inserito il risultato"
+              label="Giocatore che ha inserito il risultato"
               players={players}
               value={submitter}
               onChange={setSubmitter}
@@ -256,7 +256,7 @@ function EditMatchDialog({
             />
 
             <div className="flex flex-col gap-1.5">
-              <Label>Esito per il socio inseritore</Label>
+              <Label>Esito per il giocatore inseritore</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"

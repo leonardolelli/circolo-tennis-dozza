@@ -114,7 +114,7 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
           <DialogTitle>Aggiungi risultato</DialogTitle>
           <DialogDescription>
             {state.step === 1 && "Identificati con il tuo nome e il tuo PIN."}
-            {state.step === 2 && "Cerca il tuo avversario tra i soci."}
+            {state.step === 2 && "Cerca il tuo avversario tra i giocatori."}
             {state.step === 3 && "Indica l'esito e il punteggio dei set."}
           </DialogDescription>
         </DialogHeader>

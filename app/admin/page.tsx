@@ -135,7 +135,7 @@ async function DashboardContent() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Soci totali" value={totalMembers} icon={Users} />
+        <StatCard label="Giocatori totali" value={totalMembers} icon={Users} />
         <StatCard label="Partite totali" value={totalMatches} icon={Swords} />
         <StatCard
           label="Partite (30 giorni)"

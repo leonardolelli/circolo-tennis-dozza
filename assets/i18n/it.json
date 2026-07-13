@@ -1,0 +1,51 @@
+{
+  "terms": {
+    "player": {
+      "singular": "giocatore",
+      "plural": "giocatori",
+      "singularCapitalized": "Giocatore",
+      "pluralCapitalized": "Giocatori"
+    }
+  },
+  "classifica": {
+    "title": "Classifica",
+    "subtitle": "Punteggio stile Elo, aggiornato dopo ogni partita registrata.",
+    "actions": {
+      "history": "Cronologia match",
+      "awards": "Premi"
+    },
+    "usage": {
+      "title": "Come usare la classifica",
+      "challenge": "Tocca un giocatore attivo per aprire la richiesta di sfida su WhatsApp.",
+      "search": "Usa la ricerca per trovare rapidamente nome o cognome e i pulsanti in basso per cambiare pagina.",
+      "frozen": "Il fiocco di neve indica un giocatore congelato: resta visibile in classifica ma non può essere sfidato o usato per nuovi risultati."
+    }
+  },
+  "cronologia": {
+    "title": "Cronologia match",
+    "subtitle": "Storico di tutte le partite registrate dai giocatori."
+  },
+  "premi": {
+    "title": "Premi",
+    "subtitle": "Classifiche mensili che si azzerano automaticamente a inizio mese.",
+    "backToRanking": "Torna alla classifica",
+    "periodLabel": "Periodo attuale:",
+    "cards": {
+      "mostWins": "Chi ha vinto di più",
+      "mostMatches": "Chi ha fatto più partite",
+      "mostLosses": "Chi ha perso di più"
+    },
+    "units": {
+      "wins": "vittorie",
+      "matches": "partite",
+      "losses": "sconfitte"
+    },
+    "empty": "Nessun dato disponibile per questo mese."
+  },
+  "admin": {
+    "players": {
+      "title": "Giocatori",
+      "subtitle": "Elenco dei giocatori del circolo."
+    }
+  }
+}

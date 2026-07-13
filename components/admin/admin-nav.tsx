@@ -7,7 +7,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 
 const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/soci", label: "Soci", icon: Users },
+  { href: "/admin/soci", label: "Giocatori", icon: Users },
   { href: "/admin/cronologia-match", label: "Cronologia match", icon: History },
 ] as const;
 

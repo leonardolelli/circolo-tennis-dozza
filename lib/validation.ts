@@ -87,7 +87,7 @@ export const adminMatchSchema = z
     data: z.string().datetime({ offset: true }),
   })
   .refine((data) => data.inseritoreId !== data.avversarioId, {
-    message: "Seleziona due soci diversi.",
+    message: "Seleziona due giocatori diversi.",
     path: ["avversarioId"],
   });
 export type AdminMatchInput = z.infer<typeof adminMatchSchema>;
