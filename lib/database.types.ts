@@ -25,10 +25,12 @@ export interface Database {
           nome: string;
           cognome: string;
           telefono: string;
+          punti_iniziali: number;
           punti: number;
           pin: string;
           vittorie: number;
           sconfitte: number;
+          congelato: boolean;
           data_ultima_partita: string | null;
           created_at: string;
         };
@@ -37,10 +39,12 @@ export interface Database {
           nome: string;
           cognome: string;
           telefono: string;
+          punti_iniziali?: number;
           punti?: number;
           pin: string;
           vittorie?: number;
           sconfitte?: number;
+          congelato?: boolean;
           data_ultima_partita?: string | null;
           created_at?: string;
         };
@@ -49,10 +53,12 @@ export interface Database {
           nome?: string;
           cognome?: string;
           telefono?: string;
+          punti_iniziali?: number;
           punti?: number;
           pin?: string;
           vittorie?: number;
           sconfitte?: number;
+          congelato?: boolean;
           data_ultima_partita?: string | null;
           created_at?: string;
         };

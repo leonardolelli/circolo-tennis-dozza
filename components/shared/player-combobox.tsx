@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,17 @@ export function PlayerCombobox({
     value ? `${value.nome} ${value.cognome}` : "",
   );
   const [isOpen, setIsOpen] = useState(false);
+  const pointerIntentRef = useRef(false);
+
+  useEffect(() => {
+    setQuery(value ? `${value.nome} ${value.cognome}` : "");
+  }, [value]);
+
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+    }
+  }, [disabled]);
 
   const candidates = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -67,8 +78,19 @@ export function PlayerCombobox({
           placeholder={placeholder}
           autoComplete="off"
           className="pl-9"
-          onFocus={() => setIsOpen(true)}
-          onBlur={() => setTimeout(() => setIsOpen(false), 120)}
+          onPointerDown={() => {
+            pointerIntentRef.current = true;
+          }}
+          onFocus={() => {
+            if (pointerIntentRef.current || query.trim().length > 0) {
+              setIsOpen(true);
+            }
+            pointerIntentRef.current = false;
+          }}
+          onBlur={() => {
+            pointerIntentRef.current = false;
+            setTimeout(() => setIsOpen(false), 120);
+          }}
           onChange={(event) => {
             setQuery(event.target.value);
             setIsOpen(true);

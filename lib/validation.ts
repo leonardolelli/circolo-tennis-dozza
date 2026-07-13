@@ -41,6 +41,14 @@ export const addMemberSchema = z.object({
 });
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 
+export const updateMemberSchema = z.object({
+  id: uuidSchema,
+  nome: nameSchema,
+  cognome: nameSchema,
+  telefono: phoneSchema,
+});
+export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
+
 /** Input accepted by the `submitMatchResult` Server Action. */
 export const submitMatchSchema = z
   .object({
@@ -68,6 +76,21 @@ export const challengeSchema = z
     path: ["opponentId"],
   });
 export type ChallengeInput = z.infer<typeof challengeSchema>;
+
+export const adminMatchSchema = z
+  .object({
+    id: uuidSchema,
+    inseritoreId: uuidSchema,
+    avversarioId: uuidSchema,
+    esito: z.enum(["win", "loss"]),
+    risultato: scoreSchema,
+    data: z.string().datetime({ offset: true }),
+  })
+  .refine((data) => data.inseritoreId !== data.avversarioId, {
+    message: "Seleziona due soci diversi.",
+    path: ["avversarioId"],
+  });
+export type AdminMatchInput = z.infer<typeof adminMatchSchema>;
 
 /**
  * Strips characters that are meaningful in PostgREST's filter/ILIKE syntax

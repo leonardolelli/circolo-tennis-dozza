@@ -36,7 +36,7 @@ export async function requestChallenge(
   const supabase = createServiceRoleClient();
   const { data: players, error } = await supabase
     .from("soci")
-    .select("id, nome, cognome, pin, telefono")
+    .select("id, nome, cognome, pin, telefono, congelato")
     .in("id", [requesterId, opponentId]);
 
   if (error || !players || players.length !== 2) {
@@ -47,6 +47,13 @@ export async function requestChallenge(
   const opponent = players.find((player) => player.id === opponentId);
   if (!requester || !opponent) {
     return { success: false, error: "Giocatore o avversario non trovato." };
+  }
+
+  if (requester.congelato || opponent.congelato) {
+    return {
+      success: false,
+      error: "Le sfide verso o da soci congelati non sono disponibili.",
+    };
   }
 
   const isPinValid = await bcrypt.compare(requesterPin, requester.pin);

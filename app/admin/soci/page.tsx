@@ -52,7 +52,7 @@ async function SociContent({
   let dbQuery = supabase
     .from("soci")
     .select(
-      "id, nome, cognome, telefono, punti, vittorie, sconfitte, data_ultima_partita, created_at",
+      "id, nome, cognome, telefono, punti, punti_iniziali, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
     );
 
   if (query) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users } from "lucide-react";
+import { History, LayoutDashboard, Users } from "lucide-react";
 
 import { CLUB_NAME } from "@/lib/constants";
 import { LogoutButton } from "@/components/logout-button";
@@ -8,23 +8,27 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/soci", label: "Soci", icon: Users },
+  { href: "/admin/cronologia-match", label: "Cronologia match", icon: History },
 ] as const;
 
 export function AdminNav({ email }: { email?: string }) {
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <div className="flex flex-wrap items-center gap-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
           <Link
             href="/admin"
-            className="flex items-center gap-2 whitespace-nowrap font-semibold"
+            className="flex min-w-0 items-start gap-2 font-semibold sm:items-center"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tennis text-xs font-bold text-tennis-foreground">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tennis text-xs font-bold text-tennis-foreground">
               CT
             </span>
-            {CLUB_NAME} · Admin
+            <span className="min-w-0 text-sm leading-tight sm:hidden">
+              Virtus Dozza · Admin
+            </span>
+            <span className="hidden sm:inline">{CLUB_NAME} · Admin</span>
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex flex-wrap items-center gap-1">
             {ADMIN_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
@@ -37,7 +41,7 @@ export function AdminNav({ email }: { email?: string }) {
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 self-end sm:self-auto">
           {email && (
             <span className="hidden text-sm text-muted-foreground sm:inline">
               {email}

@@ -40,15 +40,28 @@ create table if not exists public.soci (
   nome text not null check (char_length(trim(nome)) > 0),
   cognome text not null check (char_length(trim(cognome)) > 0),
   telefono text not null check (telefono ~ '^\+?[0-9 ]{6,20}$'),
+  punti_iniziali integer not null default 1000,
   punti integer not null default 1000,
   -- Bcrypt hash of the member's 8-digit PIN. Never store or return the raw
   -- PIN - see lib/validation.ts (format) and app/actions/members.ts (hashing).
   pin text not null,
   vittorie integer not null default 0 check (vittorie >= 0),
   sconfitte integer not null default 0 check (sconfitte >= 0),
+  congelato boolean not null default false,
   data_ultima_partita timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.soci
+  add column if not exists punti_iniziali integer not null default 1000,
+  add column if not exists congelato boolean not null default false;
+
+update public.soci
+   set punti_iniziali = punti
+ where coalesce(vittorie, 0) = 0
+   and coalesce(sconfitte, 0) = 0
+   and punti_iniziali = 1000
+   and punti <> 1000;
 
 comment on table public.soci is 'Club members: ranking points, contact info and hashed PIN.';
 comment on column public.soci.pin is 'Bcrypt hash of the 8-digit member PIN, never the raw value.';
@@ -137,9 +150,9 @@ alter table public.sponsor enable row level security;
 -- non-privileged client fails loudly instead of silently leaking data.
 revoke all on table public.soci from anon, authenticated;
 grant select (
-  id, nome, cognome, punti, vittorie, sconfitte, data_ultima_partita, created_at
+  id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at
 ) on table public.soci to anon, authenticated;
-grant select (telefono) on table public.soci to authenticated;
+grant select (telefono, punti_iniziali) on table public.soci to authenticated;
 
 create policy "soci_public_read" on public.soci
   for select to anon, authenticated
