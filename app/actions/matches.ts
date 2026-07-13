@@ -188,7 +188,7 @@ export async function submitMatchResult(
   if (inseritore.congelato || avversario.congelato) {
     return {
       success: false,
-      error: "Non puoi registrare partite per soci congelati.",
+      error: "Non puoi registrare partite per giocatori congelati.",
     };
   }
 
@@ -255,13 +255,13 @@ export async function updateMatch(
     .in("id", [inseritoreId, avversarioId]);
 
   if (playersError || !players || players.length !== 2) {
-    return { success: false, error: "Seleziona due soci validi." };
+    return { success: false, error: "Seleziona due giocatori validi." };
   }
 
   const inseritore = players.find((player) => player.id === inseritoreId);
   const avversario = players.find((player) => player.id === avversarioId);
   if (!inseritore || !avversario) {
-    return { success: false, error: "Seleziona due soci validi." };
+    return { success: false, error: "Seleziona due giocatori validi." };
   }
 
   const winnerId = esito === "win" ? inseritoreId : avversarioId;

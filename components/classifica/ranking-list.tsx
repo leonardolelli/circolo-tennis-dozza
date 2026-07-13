@@ -27,7 +27,7 @@ export function RankingList({
   if (members.length === 0) {
     return (
       <Card className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
-        Nessun socio in classifica per ora.
+        Nessun giocatore in classifica per ora.
       </Card>
     );
   }
@@ -73,12 +73,12 @@ export function RankingList({
                 </span>
                 {/* {member.congelato && (
                   <span className="mt-1 block text-xs text-muted-foreground">
-                    Socio congelato
+                    Giocatore congelato
                   </span>
                 )} */}
               </span>
               <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-                {member.vittorie}V - {member.sconfitte}P (
+                {member.vittorie}V - {member.sconfitte}S (
                 {formatWinRate(member.vittorie, member.sconfitte)})
               </span>
               <span className="w-14 shrink-0 text-right text-base font-bold tabular-nums text-tennis">

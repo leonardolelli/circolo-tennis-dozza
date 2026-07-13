@@ -80,7 +80,7 @@ export async function addMember(
     console.error("addMember failed:", error);
     return {
       success: false,
-      error: "Impossibile aggiungere il socio. Riprova.",
+      error: "Impossibile aggiungere il giocatore. Riprova.",
     };
   }
 
@@ -123,7 +123,7 @@ export async function updateMember(
     console.error("updateMember failed:", error);
     return {
       success: false,
-      error: "Impossibile aggiornare il socio. Riprova.",
+      error: "Impossibile aggiornare il giocatore. Riprova.",
     };
   }
 
@@ -168,7 +168,7 @@ export async function toggleMemberFrozen(
     console.error("toggleMemberFrozen failed:", error);
     return {
       success: false,
-      error: "Impossibile aggiornare lo stato del socio. Riprova.",
+      error: "Impossibile aggiornare lo stato del giocatore. Riprova.",
     };
   }
 
@@ -192,14 +192,14 @@ export async function deleteMember(memberId: string): Promise<ActionResult> {
     console.error("deleteMember relation check failed:", countError);
     return {
       success: false,
-      error: "Impossibile verificare le partite del socio. Riprova.",
+      error: "Impossibile verificare le partite del giocatore. Riprova.",
     };
   }
 
   if ((count ?? 0) > 0) {
     return {
       success: false,
-      error: "Non puoi eliminare un socio con partite registrate. Congelalo invece.",
+      error: "Non puoi eliminare un giocatore con partite registrate. Congelalo invece.",
     };
   }
 
@@ -209,7 +209,7 @@ export async function deleteMember(memberId: string): Promise<ActionResult> {
     console.error("deleteMember failed:", error);
     return {
       success: false,
-      error: "Impossibile eliminare il socio. Riprova.",
+      error: "Impossibile eliminare il giocatore. Riprova.",
     };
   }
 

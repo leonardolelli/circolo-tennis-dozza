@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { History } from "lucide-react";
+import { Award, History } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,10 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RankingList } from "@/components/classifica/ranking-list";
 import { AddMatchDialog } from "@/components/classifica/add-match-dialog";
 import { getRankedMembers } from "@/lib/data/members";
+import { copy, getPlayerLabel } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
 
 export const metadata = {
-  title: "Classifica",
+  title: copy.classifica.title,
 };
 
 const PATHNAME = "/classifica";
@@ -34,16 +35,17 @@ export default function ClassificaPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Classifica
+            {copy.classifica.title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Punteggio stile Elo, aggiornato dopo ogni partita registrata.
+            {copy.classifica.subtitle}
           </p>
         </div>
         <Suspense
           fallback={
             <div className="flex gap-2">
               <Skeleton className="h-9 w-36" />
+              <Skeleton className="h-9 w-24" />
               <Skeleton className="h-9 w-44" />
             </div>
           }
@@ -68,7 +70,13 @@ async function ClassificaActions() {
       <Button asChild variant="outline">
         <Link href="/classifica/cronologia">
           <History className="h-4 w-4" />
-          Cronologia match
+          {copy.classifica.actions.history}
+        </Link>
+      </Button>
+      <Button asChild variant="outline">
+        <Link href="/classifica/premi">
+          <Award className="h-4 w-4" />
+          {copy.classifica.actions.awards}
         </Link>
       </Button>
       <AddMatchDialog players={activeMembers} />
@@ -114,7 +122,7 @@ async function ClassificaContent({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          {filteredMembers.length} soci in classifica.
+          {filteredMembers.length} {getPlayerLabel(filteredMembers.length)} in classifica.
         </p>
         <MembersSearch pathname={PATHNAME} query={query} />
       </div>
@@ -124,15 +132,15 @@ async function ClassificaContent({
       <Pagination currentPage={safePage} totalPages={totalPages} buildHref={buildHref} />
 
       <Card className="space-y-2 p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Come usare la classifica</p>
+        <p className="font-medium text-foreground">{copy.classifica.usage.title}</p>
         <p>
-          Tocca un socio attivo per aprire la richiesta di sfida su WhatsApp.
+          {copy.classifica.usage.challenge}
         </p>
         <p>
-          Usa la ricerca per trovare rapidamente nome o cognome e i pulsanti in basso per cambiare pagina.
+          {copy.classifica.usage.search}
         </p>
         <p>
-          Il fiocco di neve indica un socio congelato: resta visibile in classifica ma non può essere sfidato o usato per nuovi risultati.
+          {copy.classifica.usage.frozen}
         </p>
       </Card>
     </div>

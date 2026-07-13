@@ -52,7 +52,7 @@ export async function requestChallenge(
   if (requester.congelato || opponent.congelato) {
     return {
       success: false,
-      error: "Le sfide verso o da soci congelati non sono disponibili.",
+      error: "Le sfide verso o da giocatori congelati non sono disponibili.",
     };
   }
 
