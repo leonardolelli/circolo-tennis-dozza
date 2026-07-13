@@ -18,7 +18,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -27,10 +27,9 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /**
- * DialogContent doubles as a bottom sheet on mobile (slides up from the
- * bottom, rounded top corners, native-app feel) and a centered modal on
- * desktop (`sm:` breakpoint), so a single primitive covers both patterns
- * used throughout the app (PIN prompts, the "add match" wizard, etc.).
+ * Keep centering on the overlay rather than via `top/left + translate` on the
+ * content itself. That is more stable across route transitions, scroll state,
+ * and browser UI overlays while preserving the same shared modal primitive.
  */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -38,25 +37,26 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed z-50 grid min-h-[350px] max-h-[85svh] w-full max-w-[90vw] sm:max-w-lg gap-6 overflow-y-auto border bg-background px-6 py-10 shadow-lg duration-200",
-        "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-1/2",
-        "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-1/2",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Chiudi</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
+    <div className="fixed inset-0 z-50 overflow-y-auto p-4">
+      <div className="grid min-h-full place-items-center">
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            "relative z-50 grid min-h-[350px] max-h-[85svh] w-full max-w-[90vw] sm:max-w-lg gap-6 overflow-y-auto rounded-2xl border bg-background px-6 py-10 shadow-lg duration-200",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Chiudi</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </div>
+    </div>
   </DialogPortal>
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;

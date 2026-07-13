@@ -16,6 +16,7 @@ export type SocioPublic = Pick<
   | "punti"
   | "vittorie"
   | "sconfitte"
+  | "congelato"
   | "data_ultima_partita"
   | "created_at"
 >;
@@ -27,7 +28,7 @@ export type Partita = Database["public"]["Tables"]["partite"]["Row"];
  * `SocioPublic` plus `telefono` (see the column-level GRANT in
  * supabase/schema.sql). `pin` is still never exposed to the app layer.
  */
-export type SocioAdmin = SocioPublic & Pick<Socio, "telefono">;
+export type SocioAdmin = SocioPublic & Pick<Socio, "telefono" | "punti_iniziali">;
 
 export type Sponsor = Database["public"]["Tables"]["sponsor"]["Row"];
 

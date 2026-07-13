@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Medal } from "lucide-react";
+import { Medal, Snowflake } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { formatWinRate } from "@/lib/format";
@@ -12,7 +12,13 @@ import { ChallengeDialog } from "@/components/classifica/challenge-dialog";
 const MEDAL_COLORS = ["text-yellow-500", "text-zinc-400", "text-amber-700"];
 
 /** Ranking list; clicking a row opens the PIN-gated WhatsApp challenge dialog. */
-export function RankingList({ members }: { members: SocioPublic[] }) {
+export function RankingList({
+  members,
+  players = members,
+}: {
+  members: SocioPublic[];
+  players?: SocioPublic[];
+}) {
   const [selectedOpponent, setSelectedOpponent] = useState<SocioPublic | null>(
     null,
   );
@@ -35,11 +41,17 @@ export function RankingList({ members }: { members: SocioPublic[] }) {
             <button
               key={member.id}
               type="button"
+              disabled={member.congelato}
               onClick={() => {
                 setSelectedOpponent(member);
                 setIsChallengeOpen(true);
               }}
-              className="flex w-full animate-fade-in items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-accent/60 sm:px-6"
+              className={cn(
+                "flex w-full animate-fade-in items-center gap-4 px-4 py-3.5 text-left transition-colors sm:px-6",
+                member.congelato
+                  ? "cursor-not-allowed opacity-75"
+                  : "hover:bg-accent/60",
+              )}
               style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
             >
               <span
@@ -50,8 +62,20 @@ export function RankingList({ members }: { members: SocioPublic[] }) {
               >
                 {rank <= 3 ? <Medal className="h-5 w-5" /> : rank}
               </span>
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {member.nome} {member.cognome}
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2 truncate font-medium">
+                  <span className="truncate">
+                    {member.nome} {member.cognome}
+                  </span>
+                  {member.congelato && (
+                    <Snowflake className="h-4 w-4 shrink-0 text-sky-400" />
+                  )}
+                </span>
+                {/* {member.congelato && (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Socio congelato
+                  </span>
+                )} */}
               </span>
               <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
                 {member.vittorie}V - {member.sconfitte}P (
@@ -69,7 +93,7 @@ export function RankingList({ members }: { members: SocioPublic[] }) {
         open={isChallengeOpen}
         onOpenChange={setIsChallengeOpen}
         opponent={selectedOpponent}
-        players={members}
+        players={players.filter((player) => !player.congelato)}
       />
     </>
   );

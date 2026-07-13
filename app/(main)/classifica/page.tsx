@@ -3,16 +3,32 @@ import Link from "next/link";
 import { History } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MembersSearch } from "@/components/admin/members-search";
+import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RankingList } from "@/components/classifica/ranking-list";
 import { AddMatchDialog } from "@/components/classifica/add-match-dialog";
 import { getRankedMembers } from "@/lib/data/members";
+import { sanitizeSearchQuery } from "@/lib/validation";
 
 export const metadata = {
   title: "Classifica",
 };
 
-export default function ClassificaPage() {
+const PATHNAME = "/classifica";
+const PAGE_SIZE = 10;
+
+interface ClassificaSearchParams {
+  page?: string;
+  q?: string;
+}
+
+export default function ClassificaPage({
+  searchParams,
+}: {
+  searchParams: Promise<ClassificaSearchParams>;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -37,7 +53,7 @@ export default function ClassificaPage() {
       </div>
 
       <Suspense fallback={<RankingListSkeleton />}>
-        <ClassificaRanking />
+        <ClassificaContent searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -46,6 +62,7 @@ export default function ClassificaPage() {
 /** Depends on the same cached member list as the ranking below - see getRankedMembers. */
 async function ClassificaActions() {
   const members = await getRankedMembers();
+  const activeMembers = members.filter((member) => !member.congelato);
   return (
     <div className="flex flex-wrap gap-2">
       <Button asChild variant="outline">
@@ -54,14 +71,72 @@ async function ClassificaActions() {
           Cronologia match
         </Link>
       </Button>
-      <AddMatchDialog players={members} />
+      <AddMatchDialog players={activeMembers} />
     </div>
   );
 }
 
-async function ClassificaRanking() {
+async function ClassificaContent({
+  searchParams,
+}: {
+  searchParams: Promise<ClassificaSearchParams>;
+}) {
   const members = await getRankedMembers();
-  return <RankingList members={members} />;
+  const params = await searchParams;
+  const query = sanitizeSearchQuery(params.q ?? "");
+  const currentPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+
+  const filteredMembers = members.filter((member) => {
+    if (!query) return true;
+    const fullName = `${member.nome} ${member.cognome}`.toLowerCase();
+    const reversedName = `${member.cognome} ${member.nome}`.toLowerCase();
+    const normalizedQuery = query.toLowerCase();
+    return (
+      fullName.includes(normalizedQuery) ||
+      reversedName.includes(normalizedQuery)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const visibleMembers = filteredMembers.slice(start, start + PAGE_SIZE);
+
+  function buildHref(page: number) {
+    const next = new URLSearchParams();
+    if (query) next.set("q", query);
+    if (page > 1) next.set("page", String(page));
+    const queryString = next.toString();
+    return queryString ? `${PATHNAME}?${queryString}` : PATHNAME;
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          {filteredMembers.length} soci in classifica.
+        </p>
+        <MembersSearch pathname={PATHNAME} query={query} />
+      </div>
+
+      <RankingList members={visibleMembers} players={members} />
+
+      <Pagination currentPage={safePage} totalPages={totalPages} buildHref={buildHref} />
+
+      <Card className="space-y-2 p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Come usare la classifica</p>
+        <p>
+          Tocca un socio attivo per aprire la richiesta di sfida su WhatsApp.
+        </p>
+        <p>
+          Usa la ricerca per trovare rapidamente nome o cognome e i pulsanti in basso per cambiare pagina.
+        </p>
+        <p>
+          Il fiocco di neve indica un socio congelato: resta visibile in classifica ma non può essere sfidato o usato per nuovi risultati.
+        </p>
+      </Card>
+    </div>
+  );
 }
 
 function RankingListSkeleton() {
