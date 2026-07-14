@@ -2,8 +2,11 @@ import { Client } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Sostituisci questa stringa con la tua Connection String URI reale di Supabase
-const CONNECTION_STRING = "postgres://postgres.ddczswbmbvztedusqbcl:E9UeWl8upiu6vyIv@aws-0-eu-central-1.pooler.supabase.com:6543/postgres";
+const CONNECTION_STRING = process.env.POSTGRES_URL_NON_POOLING;
+
+if (!CONNECTION_STRING) {
+    throw new Error('Missing POSTGRES_URL_NON_POOLING environment variable.');
+}
 
 async function applySchema() {
     const client = new Client({
