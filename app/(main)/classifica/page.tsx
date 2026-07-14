@@ -127,7 +127,7 @@ async function ClassificaContent({
         <MembersSearch pathname={PATHNAME} query={query} />
       </div>
 
-      <RankingList members={visibleMembers} players={members} />
+      <RankingList members={visibleMembers} players={members} rankStart={start + 1} />
 
       <Pagination currentPage={safePage} totalPages={totalPages} buildHref={buildHref} />
 

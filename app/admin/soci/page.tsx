@@ -2,8 +2,10 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { AddMemberDialog } from "@/components/admin/add-member-dialog";
+import { MembersCsvTools } from "@/components/admin/members-csv-tools";
 import { MembersTable } from "@/components/admin/members-table";
 import { MembersSearch } from "@/components/admin/members-search";
+import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { copy } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
@@ -14,9 +16,10 @@ export const metadata = {
 };
 
 const PATHNAME = "/admin/soci";
+const PAGE_SIZE = 10;
 
 interface AdminSociPageProps {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }
 
 export default function AdminSociPage({ searchParams }: AdminSociPageProps) {
@@ -31,7 +34,10 @@ export default function AdminSociPage({ searchParams }: AdminSociPageProps) {
             {copy.admin.players.subtitle}
           </p>
         </div>
-        <AddMemberDialog />
+        <div className="flex flex-wrap gap-2">
+          <MembersCsvTools />
+          <AddMemberDialog />
+        </div>
       </div>
 
       <Suspense fallback={<SociPageSkeleton />}>
@@ -44,10 +50,11 @@ export default function AdminSociPage({ searchParams }: AdminSociPageProps) {
 async function SociContent({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const query = sanitizeSearchQuery(params.q ?? "");
+  const currentPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   const supabase = await createClient();
   let dbQuery = supabase
@@ -60,13 +67,28 @@ async function SociContent({
     dbQuery = dbQuery.or(`nome.ilike.%${query}%,cognome.ilike.%${query}%`);
   }
 
-  const { data, error } = await dbQuery.order("cognome", { ascending: true });
+  const { data, error } = await dbQuery
+    .order("punti", { ascending: false })
+    .order("cognome", { ascending: true })
+    .order("nome", { ascending: true });
 
   if (error) {
     console.error("Failed to load members:", error);
   }
 
   const members: SocioAdmin[] = data ?? [];
+  const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const visibleMembers = members.slice(start, start + PAGE_SIZE);
+
+  function buildHref(page: number) {
+    const next = new URLSearchParams();
+    if (query) next.set("q", query);
+    if (page > 1) next.set("page", String(page));
+    const queryString = next.toString();
+    return queryString ? `${PATHNAME}?${queryString}` : PATHNAME;
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,7 +96,8 @@ async function SociContent({
         {members.length} giocatori registrati.
       </p>
       <MembersSearch pathname={PATHNAME} query={query} />
-      <MembersTable members={members} />
+      <MembersTable members={visibleMembers} />
+      <Pagination currentPage={safePage} totalPages={totalPages} buildHref={buildHref} />
     </div>
   );
 }
