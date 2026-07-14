@@ -4,11 +4,13 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
+import { calculateEloDelta } from "@/lib/elo";
 import { addMemberSchema, updateMemberSchema } from "@/lib/validation";
 import type { ActionResult } from "@/lib/types";
 
 /** Bcrypt cost factor for hashing member PINs. */
 const BCRYPT_SALT_ROUNDS = 12;
+const MIN_RATING = 100;
 
 async function assertAdmin() {
   const supabase = await createClient();
@@ -27,6 +29,94 @@ function revalidateMemberPaths() {
   revalidatePath("/admin/cronologia-match");
   revalidatePath("/classifica");
   revalidatePath("/classifica/cronologia");
+}
+
+async function rebuildRankingFromHistory(
+  serviceClient: ReturnType<typeof createServiceRoleClient>,
+) {
+  const [{ data: members, error: membersError }, { data: matches, error: matchesError }] =
+    await Promise.all([
+      serviceClient.from("soci").select("id, nome, cognome, punti_iniziali"),
+      serviceClient
+        .from("partite")
+        .select("id, id_inseritore, id_avversario, esito_inseritore, data")
+        .order("data", { ascending: true })
+        .order("id", { ascending: true }),
+    ]);
+
+  if (membersError || matchesError || !members) {
+    console.error("members rebuildRankingFromHistory failed:", membersError ?? matchesError);
+    return false;
+  }
+
+  const membersById = new Map(members.map((member) => [member.id, member]));
+  const snapshots = new Map(
+    members.map((member) => [
+      member.id,
+      {
+        punti: member.punti_iniziali,
+        vittorie: 0,
+        sconfitte: 0,
+        dataUltimaPartita: null as string | null,
+      },
+    ]),
+  );
+
+  for (const match of matches ?? []) {
+    if (!match.id_inseritore || !match.id_avversario) {
+      continue;
+    }
+
+    const inseritore = membersById.get(match.id_inseritore);
+    const avversario = membersById.get(match.id_avversario);
+    const inseritoreState = snapshots.get(match.id_inseritore);
+    const avversarioState = snapshots.get(match.id_avversario);
+
+    if (!inseritore || !avversario || !inseritoreState || !avversarioState) {
+      continue;
+    }
+
+    const winner =
+      match.esito_inseritore === "win"
+        ? { state: inseritoreState }
+        : { state: avversarioState };
+    const loser =
+      match.esito_inseritore === "win"
+        ? { state: avversarioState }
+        : { state: inseritoreState };
+
+    const delta = calculateEloDelta(winner.state.punti, loser.state.punti);
+
+    winner.state.punti = Math.max(MIN_RATING, winner.state.punti + delta);
+    winner.state.vittorie += 1;
+    winner.state.dataUltimaPartita = match.data;
+
+    loser.state.punti = Math.max(MIN_RATING, loser.state.punti - delta);
+    loser.state.sconfitte += 1;
+    loser.state.dataUltimaPartita = match.data;
+  }
+
+  for (const member of members) {
+    const snapshot = snapshots.get(member.id);
+    if (!snapshot) continue;
+
+    const { error: updateMemberError } = await serviceClient
+      .from("soci")
+      .update({
+        punti: snapshot.punti,
+        vittorie: snapshot.vittorie,
+        sconfitte: snapshot.sconfitte,
+        data_ultima_partita: snapshot.dataUltimaPartita,
+      })
+      .eq("id", member.id);
+
+    if (updateMemberError) {
+      console.error("members rebuildRankingFromHistory member update failed:", updateMemberError);
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -102,6 +192,7 @@ export async function updateMember(
     nome: formData.get("nome"),
     cognome: formData.get("cognome"),
     telefono: formData.get("telefono"),
+    punti: formData.get("punti"),
   });
 
   if (!parsed.success) {
@@ -111,12 +202,12 @@ export async function updateMember(
     };
   }
 
-  const { id, nome, cognome, telefono } = parsed.data;
+  const { id, nome, cognome, telefono, punti } = parsed.data;
   const serviceClient = createServiceRoleClient();
 
   const { error } = await serviceClient
     .from("soci")
-    .update({ nome, cognome, telefono })
+    .update({ nome, cognome, telefono, punti })
     .eq("id", id);
 
   if (error) {
@@ -176,31 +267,39 @@ export async function toggleMemberFrozen(
   return { success: true };
 }
 
-export async function deleteMember(memberId: string): Promise<ActionResult> {
+interface DeleteMemberOptions {
+  deleteMatches?: boolean;
+  recalculateRanking?: boolean;
+}
+
+export async function deleteMember(
+  memberId: string,
+  options?: DeleteMemberOptions,
+): Promise<ActionResult> {
   const admin = await assertAdmin();
   if (!admin.success) {
     return admin;
   }
 
   const serviceClient = createServiceRoleClient();
-  const { count, error: countError } = await serviceClient
-    .from("partite")
-    .select("id", { count: "exact", head: true })
-    .or(`id_inseritore.eq.${memberId},id_avversario.eq.${memberId},id_vincitore.eq.${memberId},id_perdente.eq.${memberId}`);
+  const deleteMatches = options?.deleteMatches ?? false;
+  const recalculateRanking = options?.recalculateRanking ?? true;
 
-  if (countError) {
-    console.error("deleteMember relation check failed:", countError);
-    return {
-      success: false,
-      error: "Impossibile verificare le partite del giocatore. Riprova.",
-    };
-  }
+  if (deleteMatches) {
+    const { error: deleteMatchesError } = await serviceClient
+      .from("partite")
+      .delete()
+      .or(
+        `id_inseritore.eq.${memberId},id_avversario.eq.${memberId},id_vincitore.eq.${memberId},id_perdente.eq.${memberId}`,
+      );
 
-  if ((count ?? 0) > 0) {
-    return {
-      success: false,
-      error: "Non puoi eliminare un giocatore con partite registrate. Congelalo invece.",
-    };
+    if (deleteMatchesError) {
+      console.error("deleteMember matches delete failed:", deleteMatchesError);
+      return {
+        success: false,
+        error: "Impossibile eliminare i match del giocatore. Riprova.",
+      };
+    }
   }
 
   const { error } = await serviceClient.from("soci").delete().eq("id", memberId);
@@ -211,6 +310,16 @@ export async function deleteMember(memberId: string): Promise<ActionResult> {
       success: false,
       error: "Impossibile eliminare il giocatore. Riprova.",
     };
+  }
+
+  if (recalculateRanking) {
+    const rebuilt = await rebuildRankingFromHistory(serviceClient);
+    if (!rebuilt) {
+      return {
+        success: false,
+        error: "Il giocatore è stato eliminato ma la classifica non è stata ricalcolata correttamente.",
+      };
+    }
   }
 
   revalidateMemberPaths();

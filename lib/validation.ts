@@ -46,6 +46,7 @@ export const updateMemberSchema = z.object({
   nome: nameSchema,
   cognome: nameSchema,
   telefono: phoneSchema,
+  punti: z.coerce.number().int().min(0),
 });
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 

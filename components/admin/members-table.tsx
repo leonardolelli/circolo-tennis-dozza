@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -220,7 +221,7 @@ function EditMemberDialog({
         <DialogHeader>
           <DialogTitle>Modifica giocatore</DialogTitle>
           <DialogDescription>
-            Aggiorna i dati anagrafici del giocatore selezionato.
+            Aggiorna i dati anagrafici e il punteggio del giocatore selezionato.
           </DialogDescription>
         </DialogHeader>
         {member && (
@@ -243,6 +244,17 @@ function EditMemberDialog({
                 name="telefono"
                 defaultValue={member.telefono}
                 required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-punti">Punteggio attuale</Label>
+              <Input
+                id="edit-punti"
+                name="punti"
+                type="number"
+                defaultValue={member.punti}
+                required
+                min={0}
               />
             </div>
             {state && !state.success && (
@@ -271,6 +283,15 @@ function DeleteMemberDialog({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [shouldDeleteMatches, setShouldDeleteMatches] = useState(false);
+  const [shouldRecalculateRanking, setShouldRecalculateRanking] = useState(true);
+
+  useEffect(() => {
+    if (!open) {
+      setShouldDeleteMatches(false);
+      setShouldRecalculateRanking(true);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -278,12 +299,44 @@ function DeleteMemberDialog({
         <DialogHeader>
           <DialogTitle>Elimina giocatore</DialogTitle>
           <DialogDescription>
-            Questa operazione è disponibile solo per giocatori senza match registrati.
+            Scegli come gestire cronologia e classifica prima di confermare.
           </DialogDescription>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
           Vuoi eliminare {member?.nome} {member?.cognome}?
         </p>
+        <div className="flex flex-col gap-3 rounded-md border p-3">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="delete-member-matches"
+              checked={shouldDeleteMatches}
+              onCheckedChange={(checked) => setShouldDeleteMatches(checked === true)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="delete-member-matches" className="cursor-pointer">
+                Elimina anche i suoi match dalla cronologia
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Se disattivato, i match rimangono visibili ma senza il giocatore eliminato.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="delete-member-recalculate"
+              checked={shouldRecalculateRanking}
+              onCheckedChange={(checked) => setShouldRecalculateRanking(checked === true)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="delete-member-recalculate" className="cursor-pointer">
+                Ricalcola classifica dopo la rimozione
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Se disattivato, i punti attuali dei giocatori non verranno aggiornati.
+              </p>
+            </div>
+          </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annulla
@@ -294,7 +347,10 @@ function DeleteMemberDialog({
             onClick={() => {
               if (!member) return;
               startTransition(async () => {
-                const result = await deleteMember(member.id);
+                const result = await deleteMember(member.id, {
+                  deleteMatches: shouldDeleteMatches,
+                  recalculateRanking: shouldRecalculateRanking,
+                });
                 if (!result.success) {
                   toast.error(result.error);
                   return;
