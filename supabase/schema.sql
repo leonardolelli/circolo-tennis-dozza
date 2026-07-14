@@ -154,6 +154,7 @@ grant select (
 ) on table public.soci to anon, authenticated;
 grant select (telefono, punti_iniziali) on table public.soci to authenticated;
 
+DROP POLICY IF EXISTS soci_public_read ON public.soci;
 create policy "soci_public_read" on public.soci
   for select to anon, authenticated
   using (true);
@@ -166,6 +167,7 @@ create policy "soci_public_read" on public.soci
 revoke all on table public.partite from anon, authenticated;
 grant select on table public.partite to anon, authenticated;
 
+DROP POLICY IF EXISTS partite_public_read ON public.partite;
 create policy "partite_public_read" on public.partite
   for select to anon, authenticated
   using (true);
@@ -177,10 +179,12 @@ revoke all on table public.sponsor from anon, authenticated;
 grant select on table public.sponsor to anon, authenticated;
 grant insert, update, delete on table public.sponsor to authenticated;
 
+DROP POLICY IF EXISTS sponsor_public_read ON public.sponsor;
 create policy "sponsor_public_read" on public.sponsor
   for select to anon, authenticated
   using (true);
 
+DROP POLICY IF EXISTS sponsor_authenticated_write ON public.sponsor;
 create policy "sponsor_authenticated_write" on public.sponsor
   for all to authenticated
   using (true)
@@ -232,11 +236,11 @@ begin
   -- Lock both rows in a stable order (by id) so two concurrent matches
   -- between the same two players can never deadlock against each other.
   if p_inseritore_id < p_avversario_id then
-    select * into v_inseritore from public.soci where id = p_inseritore_id for update;
-    select * into v_avversario from public.soci where id = p_avversario_id for update;
+    select * into v_inseritore from public.soci where soci.id = p_inseritore_id for update;
+    select * into v_avversario from public.soci where soci.id = p_avversario_id for update;
   else
-    select * into v_avversario from public.soci where id = p_avversario_id for update;
-    select * into v_inseritore from public.soci where id = p_inseritore_id for update;
+    select * into v_avversario from public.soci where soci.id = p_avversario_id for update;
+    select * into v_inseritore from public.soci where soci.id = p_inseritore_id for update;
   end if;
 
   if v_inseritore.id is null then
@@ -258,13 +262,13 @@ begin
      set punti = greatest(v_min_rating, punti + p_variazione),
          vittorie = vittorie + 1,
          data_ultima_partita = v_now
-   where id = v_vincitore_id;
+   where soci.id = v_vincitore_id;
 
   update public.soci
      set punti = greatest(v_min_rating, punti - p_variazione),
          sconfitte = sconfitte + 1,
          data_ultima_partita = v_now
-   where id = v_perdente_id;
+   where soci.id = v_perdente_id;
 
   insert into public.partite (
     id_inseritore, id_avversario,
