@@ -6,11 +6,31 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { calculateEloDelta } from "@/lib/elo";
 import { addMemberSchema, updateMemberSchema } from "@/lib/validation";
+import type { Database } from "@/lib/database.types";
 import type { ActionResult } from "@/lib/types";
 
 /** Bcrypt cost factor for hashing member PINs. */
 const BCRYPT_SALT_ROUNDS = 12;
 const MIN_RATING = 100;
+const CSV_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+interface MemberCsvRow {
+  id?: string;
+  nome: string;
+  cognome: string;
+  telefono: string;
+  punti_iniziali?: string;
+  punti?: string;
+  pin?: string;
+  pin_hash?: string;
+  vittorie?: string;
+  sconfitte?: string;
+  congelato?: string;
+  data_ultima_partita?: string;
+  created_at?: string;
+}
+
+type SocioInsert = Database["public"]["Tables"]["soci"]["Insert"];
 
 async function assertAdmin() {
   const supabase = await createClient();
@@ -29,6 +49,136 @@ function revalidateMemberPaths() {
   revalidatePath("/admin/cronologia-match");
   revalidatePath("/classifica");
   revalidatePath("/classifica/cronologia");
+}
+
+function parseCsvText(input: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (char === '"') {
+      if (inQuotes && input[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && char === ",") {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+
+    if (!inQuotes && (char === "\n" || char === "\r")) {
+      if (char === "\r" && input[index + 1] === "\n") {
+        index += 1;
+      }
+      row.push(cell.trim());
+      cell = "";
+      if (row.some((value) => value.length > 0)) {
+        rows.push(row);
+      }
+      row = [];
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell.trim());
+    if (row.some((value) => value.length > 0)) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+function toOptionalInt(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toOptionalBoolean(value: string | undefined): boolean | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1") return true;
+  if (normalized === "false" || normalized === "0") return false;
+  return null;
+}
+
+function toOptionalIsoDate(value: string | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
+async function resolvePinHash(row: MemberCsvRow): Promise<string | null> {
+  if (row.pin_hash && row.pin_hash.length > 0) {
+    return row.pin_hash;
+  }
+  if (!row.pin || !/^\d{8}$/.test(row.pin)) {
+    return null;
+  }
+  return bcrypt.hash(row.pin, BCRYPT_SALT_ROUNDS);
+}
+
+function parseMembersCsv(csvText: string): {
+  rows: MemberCsvRow[];
+  error: string | null;
+} {
+  const table = parseCsvText(csvText);
+  if (table.length < 2) {
+    return { rows: [], error: "Il CSV non contiene righe dati." };
+  }
+
+  const headers = table[0].map((header) => header.trim().toLowerCase());
+  const requiredHeaders = ["nome", "cognome", "telefono"];
+  const missing = requiredHeaders.filter((header) => !headers.includes(header));
+
+  if (missing.length > 0) {
+    return {
+      rows: [],
+      error: `Colonne mancanti nel CSV: ${missing.join(", ")}.`,
+    };
+  }
+
+  const rows: MemberCsvRow[] = [];
+  for (let rowIndex = 1; rowIndex < table.length; rowIndex += 1) {
+    const raw = table[rowIndex];
+    const obj: Record<string, string> = {};
+    headers.forEach((header, columnIndex) => {
+      obj[header] = raw[columnIndex] ?? "";
+    });
+
+    rows.push({
+      id: obj.id || undefined,
+      nome: obj.nome ?? "",
+      cognome: obj.cognome ?? "",
+      telefono: obj.telefono ?? "",
+      punti_iniziali: obj.punti_iniziali || undefined,
+      punti: obj.punti || undefined,
+      pin: obj.pin || undefined,
+      pin_hash: obj.pin_hash || undefined,
+      vittorie: obj.vittorie || undefined,
+      sconfitte: obj.sconfitte || undefined,
+      congelato: obj.congelato || undefined,
+      data_ultima_partita: obj.data_ultima_partita || undefined,
+      created_at: obj.created_at || undefined,
+    });
+  }
+
+  return { rows, error: null };
 }
 
 async function rebuildRankingFromHistory(
@@ -193,6 +343,7 @@ export async function updateMember(
     cognome: formData.get("cognome"),
     telefono: formData.get("telefono"),
     punti: formData.get("punti"),
+    pin: formData.get("pin"),
   });
 
   if (!parsed.success) {
@@ -202,12 +353,29 @@ export async function updateMember(
     };
   }
 
-  const { id, nome, cognome, telefono, punti } = parsed.data;
+  const { id, nome, cognome, telefono, punti, pin } = parsed.data;
   const serviceClient = createServiceRoleClient();
+
+  const updatePayload: {
+    nome: string;
+    cognome: string;
+    telefono: string;
+    punti: number;
+    pin?: string;
+  } = {
+    nome,
+    cognome,
+    telefono,
+    punti,
+  };
+
+  if (pin && pin.length > 0) {
+    updatePayload.pin = await bcrypt.hash(pin, BCRYPT_SALT_ROUNDS);
+  }
 
   const { error } = await serviceClient
     .from("soci")
-    .update({ nome, cognome, telefono, punti })
+    .update(updatePayload)
     .eq("id", id);
 
   if (error) {
@@ -238,6 +406,120 @@ export async function updateMember(
 
   revalidateMemberPaths();
   return { success: true };
+}
+
+export async function importMembersCsv(
+  _prevState: ActionResult<{ imported: number }> | null,
+  formData: FormData,
+): Promise<ActionResult<{ imported: number }>> {
+  const admin = await assertAdmin();
+  if (!admin.success) {
+    return admin;
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { success: false, error: "Seleziona un file CSV valido." };
+  }
+
+  if (file.size <= 0) {
+    return { success: false, error: "Il file CSV e vuoto." };
+  }
+
+  if (file.size > CSV_MAX_FILE_SIZE) {
+    return {
+      success: false,
+      error: "Il file CSV supera il limite massimo di 5MB.",
+    };
+  }
+
+  const csvText = await file.text();
+  const parsedCsv = parseMembersCsv(csvText);
+  if (parsedCsv.error) {
+    return { success: false, error: parsedCsv.error };
+  }
+
+  const rowsWithId: SocioInsert[] = [];
+  const rowsWithoutId: SocioInsert[] = [];
+
+  for (const row of parsedCsv.rows) {
+    const nome = row.nome.trim();
+    const cognome = row.cognome.trim();
+    const telefono = row.telefono.trim();
+
+    if (!nome || !cognome || !telefono) {
+      return {
+        success: false,
+        error: "Ogni riga deve contenere nome, cognome e telefono.",
+      };
+    }
+
+    const pinHash = await resolvePinHash(row);
+    if (!pinHash) {
+      return {
+        success: false,
+        error: "Ogni riga deve includere pin_hash oppure un PIN numerico a 8 cifre.",
+      };
+    }
+
+    const payload: SocioInsert = {
+      nome,
+      cognome,
+      telefono,
+      punti_iniziali: toOptionalInt(row.punti_iniziali) ?? 1000,
+      punti: toOptionalInt(row.punti) ?? toOptionalInt(row.punti_iniziali) ?? 1000,
+      pin: pinHash,
+      vittorie: toOptionalInt(row.vittorie) ?? 0,
+      sconfitte: toOptionalInt(row.sconfitte) ?? 0,
+      congelato: toOptionalBoolean(row.congelato) ?? false,
+      data_ultima_partita: toOptionalIsoDate(row.data_ultima_partita),
+      created_at: toOptionalIsoDate(row.created_at) ?? undefined,
+    };
+
+    if (row.id) {
+      payload.id = row.id;
+      rowsWithId.push(payload);
+    } else {
+      delete payload.created_at;
+      rowsWithoutId.push(payload);
+    }
+  }
+
+  const serviceClient = createServiceRoleClient();
+
+  if (rowsWithId.length > 0) {
+    const { error } = await serviceClient
+      .from("soci")
+      .upsert(rowsWithId, { onConflict: "id" });
+
+    if (error) {
+      console.error("importMembersCsv upsert failed:", error);
+      return {
+        success: false,
+        error: "Import CSV non riuscito durante l'aggiornamento dei giocatori.",
+      };
+    }
+  }
+
+  if (rowsWithoutId.length > 0) {
+    const { error } = await serviceClient.from("soci").insert(rowsWithoutId);
+
+    if (error) {
+      console.error("importMembersCsv insert failed:", error);
+      return {
+        success: false,
+        error: "Import CSV non riuscito durante l'inserimento dei giocatori.",
+      };
+    }
+  }
+
+  revalidateMemberPaths();
+  return {
+    success: true,
+    data: {
+      imported: parsedCsv.rows.length,
+    },
+  };
 }
 
 export async function toggleMemberFrozen(

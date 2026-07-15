@@ -15,9 +15,11 @@ const MEDAL_COLORS = ["text-yellow-500", "text-zinc-400", "text-amber-700"];
 export function RankingList({
   members,
   players = members,
+  rankStart = 1,
 }: {
   members: SocioPublic[];
   players?: SocioPublic[];
+  rankStart?: number;
 }) {
   const [selectedOpponent, setSelectedOpponent] = useState<SocioPublic | null>(
     null,
@@ -36,7 +38,7 @@ export function RankingList({
     <>
       <Card className="divide-y overflow-hidden p-0">
         {members.map((member, index) => {
-          const rank = index + 1;
+          const rank = rankStart + index;
           return (
             <button
               key={member.id}

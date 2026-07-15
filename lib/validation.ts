@@ -47,6 +47,14 @@ export const updateMemberSchema = z.object({
   cognome: nameSchema,
   telefono: phoneSchema,
   punti: z.coerce.number().int().min(0),
+  pin: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (value) => value === undefined || value.length === 0 || /^\d{8}$/.test(value),
+      `Il PIN deve avere esattamente ${PIN_LENGTH} cifre numeriche.`,
+    ),
 });
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 

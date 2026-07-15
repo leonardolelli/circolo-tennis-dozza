@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { deleteMember, toggleMemberFrozen, updateMember } from "@/app/actions/members";
 import { formatDate, formatWinRate } from "@/lib/format";
+import { PIN_LENGTH } from "@/lib/validation";
 import type { ActionResult, SocioAdmin } from "@/lib/types";
 
 const INITIAL_STATE: ActionResult | null = null;
@@ -255,6 +256,17 @@ function EditMemberDialog({
                 defaultValue={member.punti}
                 required
                 min={0}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-pin">PIN ({PIN_LENGTH} cifre)</Label>
+              <Input
+                id="edit-pin"
+                name="pin"
+                inputMode="numeric"
+                maxLength={PIN_LENGTH}
+                pattern="\d{8}"
+                placeholder="Lascia vuoto per non modificarlo"
               />
             </div>
             {state && !state.success && (
