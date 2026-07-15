@@ -460,12 +460,14 @@ export async function updateMember(
     cognome: string;
     telefono: string;
     punti: number;
+    punti_iniziali?: number;
     pin?: string;
   } = {
     nome,
     cognome,
     telefono,
     punti,
+    punti_iniziali: punti,
   };
 
   if (pin && pin.length > 0) {
