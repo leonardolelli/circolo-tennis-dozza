@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -194,7 +194,8 @@ function EditMatchDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(updateMatch, INITIAL_STATE);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
   const [submitter, setSubmitter] = useState<SocioPublic | null>(null);
   const [opponent, setOpponent] = useState<SocioPublic | null>(null);
   const [outcome, setOutcome] = useState<MatchOutcome>("win");
@@ -211,14 +212,28 @@ function EditMatchDialog({
   }, [match, players]);
 
   useEffect(() => {
-    if (state?.success) {
+    if (!open) {
+      setErrorMessage(null);
+    }
+  }, [open]);
+
+  const handleSubmit = (formData: FormData) => {
+    setErrorMessage(null);
+
+    startTransition(async () => {
+      const result = await updateMatch(INITIAL_STATE, formData);
+
+      if (!result.success) {
+        setErrorMessage(result.error);
+        toast.error(result.error);
+        return;
+      }
+
       toast.success("Match aggiornato.");
       onOpenChange(false);
       router.refresh();
-    } else if (state && !state.success) {
-      toast.error(state.error);
-    }
-  }, [state, onOpenChange, router]);
+    });
+  };
 
   const canSubmit = useMemo(() => {
     return submitter && opponent && submitter.id !== opponent.id && score.trim() && dateValue;
@@ -234,7 +249,7 @@ function EditMatchDialog({
           </DialogDescription>
         </DialogHeader>
         {match && (
-          <form action={formAction} className="flex flex-col gap-4">
+          <form action={handleSubmit} className="flex flex-col gap-4">
             <input type="hidden" name="id" value={match.id} />
             <input type="hidden" name="inseritoreId" value={submitter?.id ?? ""} />
             <input type="hidden" name="avversarioId" value={opponent?.id ?? ""} />
@@ -298,8 +313,8 @@ function EditMatchDialog({
               </div>
             </div>
 
-            {state && !state.success && (
-              <p className="text-sm text-destructive">{state.error}</p>
+            {errorMessage && (
+              <p className="text-sm text-destructive">{errorMessage}</p>
             )}
 
             <DialogFooter>

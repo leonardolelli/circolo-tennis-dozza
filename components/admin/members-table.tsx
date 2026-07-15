@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { MoreHorizontal, Pencil, Snowflake, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -204,17 +204,32 @@ function EditMemberDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(updateMember, INITIAL_STATE);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (state?.success) {
+    if (!open) {
+      setErrorMessage(null);
+    }
+  }, [open]);
+
+  const handleSubmit = (formData: FormData) => {
+    setErrorMessage(null);
+
+    startTransition(async () => {
+      const result = await updateMember(INITIAL_STATE, formData);
+
+      if (!result.success) {
+        setErrorMessage(result.error);
+        toast.error(result.error);
+        return;
+      }
+
       toast.success("Giocatore aggiornato.");
       onOpenChange(false);
       router.refresh();
-    } else if (state && !state.success) {
-      toast.error(state.error);
-    }
-  }, [state, onOpenChange, router]);
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -226,7 +241,7 @@ function EditMemberDialog({
           </DialogDescription>
         </DialogHeader>
         {member && (
-          <form action={formAction} className="flex flex-col gap-4">
+          <form action={handleSubmit} className="flex flex-col gap-4">
             <input type="hidden" name="id" value={member.id} />
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
@@ -269,8 +284,8 @@ function EditMemberDialog({
                 placeholder="Lascia vuoto per non modificarlo"
               />
             </div>
-            {state && !state.success && (
-              <p className="text-sm text-destructive">{state.error}</p>
+            {errorMessage && (
+              <p className="text-sm text-destructive">{errorMessage}</p>
             )}
             <DialogFooter>
               <Button type="submit" disabled={isPending}>
