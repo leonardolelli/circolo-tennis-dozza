@@ -19,6 +19,27 @@ export const CLUB_CONTACT = {
   instagram: "https://www.instagram.com/tennis_dozza/",
 } as const
 
+export const CLUB_LEGAL = {
+  displayName: "A.S.D. Polisportiva Virtus Dozza Routier",
+  legalName: "Polisportiva Virtus Dozza Routier Associazione Sportiva Dilettantistica",
+  legalForm: "Associazione sportiva dilettantistica",
+  registeredOffice: CLUB_CONTACT.address,
+  taxCode: "02115441202",
+  vatNumber: "02559971201",
+  rasdNumber: null as string | null,
+  privacyEmail: CLUB_CONTACT.email,
+  pecEmail: null as string | null,
+} as const;
+
+export const TECHNICAL_COOKIES = [
+  {
+    name: "sb-access-token / sb-refresh-token",
+    purpose: "Authentication session for admin area",
+    provider: "Supabase",
+    duration: "Session / according to Supabase session settings",
+  },
+] as const;
+
 export const SITE_NAV_ITEMS = [
   { href: "/", label: "Home" },
   { href: "/classifica", label: "Classifica" },

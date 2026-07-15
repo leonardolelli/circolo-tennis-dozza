@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { MobileHeader } from "@/components/layout/mobile-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 /**
  * Member-facing shell: a vertical sidebar on desktop (`md:` and up) and a
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 animate-fade-in pb-24 md:pb-10">
           {children}
         </main>
+        <SiteFooter />
       </div>
       <BottomNav />
     </div>

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { LoginForm } from "@/components/login-form";
+import { AuthLegalLinks } from "@/components/layout/auth-legal-links";
 import { CLUB_NAME } from "@/lib/constants";
 
 export const metadata = {
@@ -23,6 +24,7 @@ export default function LoginPage() {
         <Suspense>
           <LoginForm />
         </Suspense>
+        <AuthLegalLinks />
       </div>
     </div>
   );
