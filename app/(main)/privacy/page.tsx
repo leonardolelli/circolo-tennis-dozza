@@ -40,6 +40,11 @@ export default function PrivacyPage() {
             <li>Dati di accesso degli amministratori autenticati.</li>
             <li>Dati comunicati spontaneamente via email, telefono o WhatsApp alla segreteria.</li>
             <li>Dati tecnici necessari al funzionamento e alla sicurezza del sito.</li>
+            <li>
+              Dati di navigazione e log tecnici raccolti dall&apos;infrastruttura
+              (es. indirizzo IP, user-agent/browser, tipologia di dispositivo,
+              data/ora della richiesta, pagine richieste, metriche di traffico).
+            </li>
           </ul>
         </section>
 
@@ -50,6 +55,7 @@ export default function PrivacyPage() {
             <li>Gestione operativa delle sfide e registrazione dei risultati.</li>
             <li>Gestione accessi amministrativi e sicurezza applicativa.</li>
             <li>Riscontro alle richieste inviate alla segreteria.</li>
+            <li>Monitoraggio tecnico del traffico, prevenzione abusi e sicurezza del servizio.</li>
           </ul>
           <p className="mt-2">
             Le basi giuridiche includono l&apos;esecuzione di attività preordinate alla
@@ -84,6 +90,11 @@ export default function PrivacyPage() {
             e dell&apos;infrastruttura applicativa/database (es. Vercel e Supabase),
             ove nominati responsabili del trattamento.
           </p>
+          <p className="mt-2">
+            I fornitori possono mettere a disposizione del titolare pannelli di
+            monitoraggio tecnico con informazioni su accessi e performance del sito,
+            anche in forma aggregata.
+          </p>
         </section>
 
         <section>
@@ -104,8 +115,9 @@ export default function PrivacyPage() {
             partite sono mantenuti per la durata dell&apos;iniziativa sportiva e per le
             esigenze organizzative del circolo; i dati di accesso admin per la durata
             dell&apos;abilitazione; le richieste inviate alla segreteria per il tempo
-            necessario a gestirle; i dati tecnici secondo le policy dei fornitori e
-            le esigenze di sicurezza.
+            necessario a gestirle; i log tecnici e i dati di traffico secondo le
+            policy di conservazione del provider infrastrutturale e le esigenze di
+            sicurezza del servizio.
           </p>
         </section>
 
