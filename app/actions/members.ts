@@ -43,6 +43,10 @@ async function assertAdmin() {
   return { success: true as const };
 }
 
+function normalizeFullName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("it-IT");
+}
+
 function revalidateMemberPaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/soci");
@@ -183,13 +187,18 @@ function parseMembersCsv(csvText: string): {
 
 async function rebuildRankingFromHistory(
   serviceClient: ReturnType<typeof createServiceRoleClient>,
+  forcedResetMemberIds: string[] = [],
 ) {
   const [{ data: members, error: membersError }, { data: matches, error: matchesError }] =
     await Promise.all([
-      serviceClient.from("soci").select("id, nome, cognome, punti_iniziali"),
+      serviceClient
+        .from("soci")
+        .select("id, nome, cognome, punti_iniziali, punti, vittorie, sconfitte, data_ultima_partita"),
       serviceClient
         .from("partite")
-        .select("id, id_inseritore, id_avversario, esito_inseritore, data")
+        .select(
+          "id, id_inseritore, id_avversario, nome_completo_inseritore, nome_completo_avversario, esito_inseritore, data",
+        )
         .order("data", { ascending: true })
         .order("id", { ascending: true }),
     ]);
@@ -200,38 +209,111 @@ async function rebuildRankingFromHistory(
   }
 
   const membersById = new Map(members.map((member) => [member.id, member]));
+  const membersByNormalizedName = new Map<string, Array<(typeof members)[number]>>();
+  for (const member of members) {
+    const fullName = normalizeFullName(`${member.nome} ${member.cognome}`);
+    const existing = membersByNormalizedName.get(fullName);
+
+    if (existing) {
+      existing.push(member);
+    } else {
+      membersByNormalizedName.set(fullName, [member]);
+    }
+  }
+
+  const resolveMemberId = (rawId: string | null, rawName: string) => {
+    if (rawId && membersById.has(rawId)) {
+      return rawId;
+    }
+
+    const byName = membersByNormalizedName.get(normalizeFullName(rawName));
+    if (!byName || byName.length !== 1) {
+      return null;
+    }
+
+    return byName[0].id;
+  };
+
+  const involvedMemberIds = new Set<string>();
+  for (const memberId of forcedResetMemberIds) {
+    if (membersById.has(memberId)) {
+      involvedMemberIds.add(memberId);
+    }
+  }
+
   const snapshots = new Map(
     members.map((member) => [
       member.id,
       {
-        punti: member.punti_iniziali,
-        vittorie: 0,
-        sconfitte: 0,
-        dataUltimaPartita: null as string | null,
+        punti: member.punti,
+        vittorie: member.vittorie,
+        sconfitte: member.sconfitte,
+        dataUltimaPartita: member.data_ultima_partita,
       },
     ]),
   );
 
+  const resolvedMatches: Array<{
+    inseritoreId: string;
+    avversarioId: string;
+    esito: "win" | "loss";
+    data: string;
+  }> = [];
+
   for (const match of matches ?? []) {
-    if (!match.id_inseritore || !match.id_avversario) {
+    const inseritoreId = resolveMemberId(
+      match.id_inseritore,
+      match.nome_completo_inseritore,
+    );
+    const avversarioId = resolveMemberId(
+      match.id_avversario,
+      match.nome_completo_avversario,
+    );
+
+    if (!inseritoreId || !avversarioId || inseritoreId === avversarioId) {
       continue;
     }
 
-    const inseritore = membersById.get(match.id_inseritore);
-    const avversario = membersById.get(match.id_avversario);
-    const inseritoreState = snapshots.get(match.id_inseritore);
-    const avversarioState = snapshots.get(match.id_avversario);
+    involvedMemberIds.add(inseritoreId);
+    involvedMemberIds.add(avversarioId);
+    resolvedMatches.push({
+      inseritoreId,
+      avversarioId,
+      esito: match.esito_inseritore,
+      data: match.data,
+    });
+  }
+
+  for (const memberId of involvedMemberIds) {
+    const member = membersById.get(memberId);
+    const snapshot = snapshots.get(memberId);
+
+    if (!member || !snapshot) {
+      continue;
+    }
+
+    snapshot.punti = member.punti_iniziali;
+    snapshot.vittorie = 0;
+    snapshot.sconfitte = 0;
+    snapshot.dataUltimaPartita = null;
+  }
+
+  for (const match of resolvedMatches) {
+    const inseritore = membersById.get(match.inseritoreId);
+    const avversario = membersById.get(match.avversarioId);
+    const inseritoreState = snapshots.get(match.inseritoreId);
+    const avversarioState = snapshots.get(match.avversarioId);
 
     if (!inseritore || !avversario || !inseritoreState || !avversarioState) {
       continue;
     }
 
     const winner =
-      match.esito_inseritore === "win"
+      match.esito === "win"
         ? { state: inseritoreState }
         : { state: avversarioState };
     const loser =
-      match.esito_inseritore === "win"
+      match.esito === "win"
         ? { state: avversarioState }
         : { state: inseritoreState };
 
@@ -244,10 +326,25 @@ async function rebuildRankingFromHistory(
     loser.state.punti = Math.max(MIN_RATING, loser.state.punti - delta);
     loser.state.sconfitte += 1;
     loser.state.dataUltimaPartita = match.data;
+
+    const { error: updateMatchError } = await serviceClient
+      .from("partite")
+      .update({
+        id_inseritore: inseritore.id,
+        id_avversario: avversario.id,
+        nome_completo_inseritore: `${inseritore.nome} ${inseritore.cognome}`.trim(),
+        nome_completo_avversario: `${avversario.nome} ${avversario.cognome}`.trim(),
+      })
+      .eq("id", match.id);
+
+    if (updateMatchError) {
+      console.error("members rebuildRankingFromHistory match update failed:", updateMatchError);
+      return false;
+    }
   }
 
-  for (const member of members) {
-    const snapshot = snapshots.get(member.id);
+  for (const memberId of involvedMemberIds) {
+    const snapshot = snapshots.get(memberId);
     if (!snapshot) continue;
 
     const { error: updateMemberError } = await serviceClient
@@ -258,7 +355,7 @@ async function rebuildRankingFromHistory(
         sconfitte: snapshot.sconfitte,
         data_ultima_partita: snapshot.dataUltimaPartita,
       })
-      .eq("id", member.id);
+      .eq("id", memberId);
 
     if (updateMemberError) {
       console.error("members rebuildRankingFromHistory member update failed:", updateMemberError);
@@ -567,6 +664,31 @@ export async function deleteMember(
   const deleteMatches = options?.deleteMatches ?? false;
   const recalculateRanking = options?.recalculateRanking ?? true;
 
+  const { data: impactedMatches, error: impactedMatchesError } = await serviceClient
+    .from("partite")
+    .select("id_inseritore, id_avversario")
+    .or(
+      `id_inseritore.eq.${memberId},id_avversario.eq.${memberId},id_vincitore.eq.${memberId},id_perdente.eq.${memberId}`,
+    );
+
+  if (impactedMatchesError) {
+    console.error("deleteMember impacted matches preload failed:", impactedMatchesError);
+    return {
+      success: false,
+      error: "Impossibile eliminare il giocatore. Riprova.",
+    };
+  }
+
+  const forcedResetMemberIds = new Set<string>();
+  for (const match of impactedMatches ?? []) {
+    if (match.id_inseritore && match.id_inseritore !== memberId) {
+      forcedResetMemberIds.add(match.id_inseritore);
+    }
+    if (match.id_avversario && match.id_avversario !== memberId) {
+      forcedResetMemberIds.add(match.id_avversario);
+    }
+  }
+
   if (deleteMatches) {
     const { error: deleteMatchesError } = await serviceClient
       .from("partite")
@@ -595,7 +717,10 @@ export async function deleteMember(
   }
 
   if (recalculateRanking) {
-    const rebuilt = await rebuildRankingFromHistory(serviceClient);
+    const rebuilt = await rebuildRankingFromHistory(
+      serviceClient,
+      Array.from(forcedResetMemberIds),
+    );
     if (!rebuilt) {
       return {
         success: false,
