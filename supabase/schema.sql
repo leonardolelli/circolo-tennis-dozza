@@ -133,6 +133,21 @@ comment on table public.sponsor is 'Sponsors shown as a logo grid on the homepag
 
 create index if not exists sponsor_display_order_idx on public.sponsor (display_order);
 
+-- -----------------------------------------------------------------------------
+-- Table: site_settings
+-- -----------------------------------------------------------------------------
+create table if not exists public.site_settings (
+  id text primary key default 'global' check (id = 'global'),
+  maintenance_mode boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode.';
+
+insert into public.site_settings (id)
+values ('global')
+on conflict (id) do nothing;
+
 -- =============================================================================
 -- Row Level Security
 -- =============================================================================
@@ -140,6 +155,7 @@ create index if not exists sponsor_display_order_idx on public.sponsor (display_
 alter table public.soci enable row level security;
 alter table public.partite enable row level security;
 alter table public.sponsor enable row level security;
+alter table public.site_settings enable row level security;
 
 -- soci: anon/authenticated may only SELECT, and only the public-safe columns.
 -- `pin` is withheld from everyone except the service_role (used internally
@@ -189,6 +205,17 @@ create policy "sponsor_authenticated_write" on public.sponsor
   for all to authenticated
   using (true)
   with check (true);
+
+-- site_settings: publicly readable so the maintenance banner can be shown to
+-- every visitor; writes still happen only through admin-authenticated server
+-- actions using the service_role key.
+revoke all on table public.site_settings from anon, authenticated;
+grant select on table public.site_settings to anon, authenticated;
+
+DROP POLICY IF EXISTS site_settings_public_read ON public.site_settings;
+create policy "site_settings_public_read" on public.site_settings
+  for select to anon, authenticated
+  using (true);
 
 -- =============================================================================
 -- apply_match_result: atomically records a match and updates both players.

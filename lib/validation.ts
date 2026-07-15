@@ -101,6 +101,20 @@ export const adminMatchSchema = z
   });
 export type AdminMatchInput = z.infer<typeof adminMatchSchema>;
 
+export const createAdminMatchSchema = z
+  .object({
+    inseritoreId: uuidSchema,
+    avversarioId: uuidSchema,
+    esito: z.enum(["win", "loss"]),
+    risultato: scoreSchema,
+    data: z.string().datetime({ offset: true }),
+  })
+  .refine((data) => data.inseritoreId !== data.avversarioId, {
+    message: "Seleziona due giocatori diversi.",
+    path: ["avversarioId"],
+  });
+export type CreateAdminMatchInput = z.infer<typeof createAdminMatchSchema>;
+
 /**
  * Strips characters that are meaningful in PostgREST's filter/ILIKE syntax
  * (`,` `(` `)` separate/group `.or()` conditions; `%` `_` are ILIKE

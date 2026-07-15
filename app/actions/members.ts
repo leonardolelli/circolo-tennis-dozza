@@ -254,6 +254,7 @@ async function rebuildRankingFromHistory(
   );
 
   const resolvedMatches: Array<{
+    id: string;
     inseritoreId: string;
     avversarioId: string;
     esito: "win" | "loss";
@@ -277,6 +278,7 @@ async function rebuildRankingFromHistory(
     involvedMemberIds.add(inseritoreId);
     involvedMemberIds.add(avversarioId);
     resolvedMatches.push({
+      id: match.id,
       inseritoreId,
       avversarioId,
       esito: match.esito_inseritore,

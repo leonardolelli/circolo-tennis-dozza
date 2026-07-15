@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { AdminAddMatchDialog } from "@/components/admin/admin-add-match-dialog";
 import { MatchesFilters } from "@/components/cronologia/matches-filters";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,12 +30,16 @@ export default function AdminCronologiaMatchPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Cronologia match
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Modifica o elimina i match registrati dal pannello amministratore.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Cronologia match
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Aggiungi, modifica o elimina i match registrati dal pannello amministratore.
+            </p>
+          </div>
+        </div>
       </div>
 
       <Suspense fallback={<AdminCronologiaSkeleton />}>
@@ -106,6 +111,10 @@ async function AdminCronologiaContent({
       <p className="text-sm text-muted-foreground">
         {totalMatches} match registrat{totalMatches === 1 ? "o" : "i"} in totale.
       </p>
+
+      <div className="flex justify-start sm:justify-end">
+        <AdminAddMatchDialog players={players} />
+      </div>
 
       <MatchesFilters pathname={PATHNAME} query={query} sort={sort} />
 

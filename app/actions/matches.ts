@@ -4,7 +4,11 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
-import { adminMatchSchema, submitMatchSchema } from "@/lib/validation";
+import {
+  adminMatchSchema,
+  createAdminMatchSchema,
+  submitMatchSchema,
+} from "@/lib/validation";
 import { calculateEloDelta } from "@/lib/elo";
 import type { ActionResult, MatchOutcome } from "@/lib/types";
 
@@ -375,6 +379,93 @@ export async function updateMatch(
     return {
       success: false,
       error: "Impossibile aggiornare il match. Riprova.",
+    };
+  }
+
+  const rebuilt = await rebuildRankingFromHistory(serviceClient);
+  if (!rebuilt) {
+    return {
+      success: false,
+      error: "Il match è stato salvato ma la classifica non è stata ricalcolata correttamente.",
+    };
+  }
+
+  revalidateMatchPaths();
+  return { success: true };
+}
+
+export async function createAdminMatch(
+  _prevState: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const admin = await assertAdmin();
+  if (!admin.success) {
+    return admin;
+  }
+
+  const parsed = createAdminMatchSchema.safeParse({
+    inseritoreId: formData.get("inseritoreId"),
+    avversarioId: formData.get("avversarioId"),
+    esito: formData.get("esito"),
+    risultato: formData.get("risultato"),
+    data: formData.get("data"),
+  });
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Dati non validi.",
+    };
+  }
+
+  const { inseritoreId, avversarioId, esito, risultato, data } = parsed.data;
+  const serviceClient = createServiceRoleClient();
+
+  const { data: players, error: playersError } = await serviceClient
+    .from("soci")
+    .select("id, nome, cognome, congelato")
+    .in("id", [inseritoreId, avversarioId]);
+
+  if (playersError || !players || players.length !== 2) {
+    return { success: false, error: "Seleziona due giocatori validi." };
+  }
+
+  const inseritore = players.find((player) => player.id === inseritoreId);
+  const avversario = players.find((player) => player.id === avversarioId);
+
+  if (!inseritore || !avversario) {
+    return { success: false, error: "Seleziona due giocatori validi." };
+  }
+
+  if (inseritore.congelato || avversario.congelato) {
+    return {
+      success: false,
+      error: "Non puoi registrare partite per giocatori congelati.",
+    };
+  }
+
+  const winnerId = esito === "win" ? inseritoreId : avversarioId;
+  const loserId = esito === "win" ? avversarioId : inseritoreId;
+
+  const { error: insertError } = await serviceClient.from("partite").insert({
+    id_inseritore: inseritoreId,
+    id_avversario: avversarioId,
+    nome_completo_inseritore: `${inseritore.nome} ${inseritore.cognome}`.trim(),
+    nome_completo_avversario: `${avversario.nome} ${avversario.cognome}`.trim(),
+    esito_inseritore: esito,
+    id_vincitore: winnerId,
+    id_perdente: loserId,
+    risultato,
+    data,
+    punti_vincitore_variazioni: 1,
+    punti_perdente_variazioni: 1,
+  });
+
+  if (insertError) {
+    console.error("createAdminMatch failed:", insertError);
+    return {
+      success: false,
+      error: "Impossibile registrare il match. Riprova.",
     };
   }
 

@@ -310,13 +310,13 @@ function DeleteMemberDialog({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [shouldDeleteMatches, setShouldDeleteMatches] = useState(false);
-  const [shouldRecalculateRanking, setShouldRecalculateRanking] = useState(true);
+  const [shouldDeleteMatches, setShouldDeleteMatches] = useState(true);
+  const [shouldRecalculateRanking, setShouldRecalculateRanking] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setShouldDeleteMatches(false);
-      setShouldRecalculateRanking(true);
+      setShouldDeleteMatches(true);
+      setShouldRecalculateRanking(false);
     }
   }, [open]);
 
