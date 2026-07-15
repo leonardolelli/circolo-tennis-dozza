@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -27,16 +27,33 @@ export function AddMemberDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, isPending] = useActionState(addMember, INITIAL_STATE);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (state?.success) {
-      toast.success("Giocatore aggiunto con successo.");
+    if (!open) {
+      setErrorMessage(null);
       formRef.current?.reset();
+    }
+  }, [open]);
+
+  const handleSubmit = (formData: FormData) => {
+    setErrorMessage(null);
+
+    startTransition(async () => {
+      const result = await addMember(INITIAL_STATE, formData);
+
+      if (!result.success) {
+        setErrorMessage(result.error);
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Giocatore aggiunto con successo.");
       setOpen(false);
       router.refresh();
-    }
-  }, [state, router]);
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -54,7 +71,7 @@ export function AddMemberDialog() {
             altri giocatori: comunicalo solo a lui.
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+        <form ref={formRef} action={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="nome">Nome</Label>
@@ -99,8 +116,8 @@ export function AddMemberDialog() {
               />
             </div>
           </div>
-          {state && !state.success && (
-            <p className="text-sm text-destructive">{state.error}</p>
+          {errorMessage && (
+            <p className="text-sm text-destructive">{errorMessage}</p>
           )}
           <DialogFooter>
             <Button

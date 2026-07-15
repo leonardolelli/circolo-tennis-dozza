@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { MaintenanceNotice } from "@/components/layout/maintenance-banner";
 import { MobileHeader } from "@/components/layout/mobile-header";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { getSiteSettings } from "@/lib/data/site-settings";
 
 /**
  * Member-facing shell: a vertical sidebar on desktop (`md:` and up) and a
@@ -12,6 +16,24 @@ import { MobileHeader } from "@/components/layout/mobile-header";
  */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
+    <Suspense fallback={null}>
+      <AppShellContent>{children}</AppShellContent>
+    </Suspense>
+  );
+}
+
+async function AppShellContent({ children }: { children: ReactNode }) {
+  const settings = await getSiteSettings();
+
+  if (settings.maintenanceMode) {
+    return (
+      <div className="min-h-svh bg-background">
+        <MaintenanceNotice fullscreen />
+      </div>
+    );
+  }
+
+  return (
     <div className="min-h-svh bg-background">
       <AppSidebar />
       <div className="flex min-h-svh flex-col md:pl-64">
@@ -19,6 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 animate-fade-in pb-24 md:pb-10">
           {children}
         </main>
+        <SiteFooter />
       </div>
       <BottomNav />
     </div>

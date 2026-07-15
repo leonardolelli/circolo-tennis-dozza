@@ -32,6 +32,8 @@ export type SocioAdmin = SocioPublic & Pick<Socio, "telefono" | "punti_iniziali"
 
 export type Sponsor = Database["public"]["Tables"]["sponsor"]["Row"];
 
+export type SiteSettings = Database["public"]["Tables"]["site_settings"]["Row"];
+
 /** Outcome of a match from the submitting player's point of view. */
 export type MatchOutcome = "win" | "loss";
 
