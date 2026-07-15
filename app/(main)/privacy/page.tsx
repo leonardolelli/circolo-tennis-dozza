@@ -100,10 +100,16 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-foreground">7. Trasferimenti verso paesi terzi</h2>
           <p className="mt-2">
-            Alcuni fornitori tecnici possono trattare dati anche al di fuori dello
-            Spazio Economico Europeo. In tali casi il trattamento avviene secondo
-            le garanzie previste dalla normativa applicabile, incluse decisioni di
-            adeguatezza o clausole contrattuali standard, se necessarie.
+            In base alla configurazione tecnica attuale, il database applicativo è localizzato in area UE.
+          </p>
+          <p className="mt-2">
+            Tuttavia, alcuni fornitori infrastrutturali e relativi sub-responsabili
+            possono effettuare trattamenti anche al di fuori dello Spazio Economico
+            Europeo (ad esempio per hosting, sicurezza, logging, monitoraggio e
+            supporto tecnico). In tali casi i trasferimenti avvengono con le
+            garanzie previste dalla normativa applicabile, incluse clausole
+            contrattuali standard (SCC) e/o altri meccanismi di trasferimento
+            riconosciuti (es. decisioni di adeguatezza o framework applicabili).
           </p>
         </section>
 
