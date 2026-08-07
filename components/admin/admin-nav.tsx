@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Construction, History, LayoutDashboard, Users } from "lucide-react";
+import { Construction, History, LayoutDashboard, Trophy, Users } from "lucide-react";
 
 import { CLUB_NAME } from "@/lib/constants";
 import { LogoutButton } from "@/components/logout-button";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/soci", label: "Giocatori", icon: Users },
+  { href: "/admin/punteggi", label: "Punteggi", icon: Trophy },
   { href: "/admin/cronologia-match", label: "Cronologia match", icon: History },
   { href: "/admin/manutenzione", label: "Manutenzione", icon: Construction },
 ] as const;

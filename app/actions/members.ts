@@ -5,13 +5,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { calculateEloDelta } from "@/lib/elo";
+import { getEloParams } from "@/lib/data/site-settings";
 import { addMemberSchema, updateMemberSchema } from "@/lib/validation";
 import type { Database } from "@/lib/database.types";
 import type { ActionResult } from "@/lib/types";
 
 /** Bcrypt cost factor for hashing member PINs. */
 const BCRYPT_SALT_ROUNDS = 12;
-const MIN_RATING = 100;
 const CSV_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 interface MemberCsvRow {
@@ -208,6 +208,10 @@ async function rebuildRankingFromHistory(
     return false;
   }
 
+  // Rebuild with the currently persisted rating parameters so the recomputed
+  // ranking reflects any admin change to the K factor / rating floor.
+  const eloParams = await getEloParams();
+
   const membersById = new Map(members.map((member) => [member.id, member]));
   const membersByNormalizedName = new Map<string, Array<(typeof members)[number]>>();
   for (const member of members) {
@@ -319,13 +323,17 @@ async function rebuildRankingFromHistory(
         ? { state: avversarioState }
         : { state: inseritoreState };
 
-    const delta = calculateEloDelta(winner.state.punti, loser.state.punti);
+    const delta = calculateEloDelta(
+      winner.state.punti,
+      loser.state.punti,
+      eloParams,
+    );
 
-    winner.state.punti = Math.max(MIN_RATING, winner.state.punti + delta);
+    winner.state.punti = Math.max(eloParams.minRating, winner.state.punti + delta);
     winner.state.vittorie += 1;
     winner.state.dataUltimaPartita = match.data;
 
-    loser.state.punti = Math.max(MIN_RATING, loser.state.punti - delta);
+    loser.state.punti = Math.max(eloParams.minRating, loser.state.punti - delta);
     loser.state.sconfitte += 1;
     loser.state.dataUltimaPartita = match.data;
 

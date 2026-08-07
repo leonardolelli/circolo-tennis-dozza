@@ -10,9 +10,8 @@ import {
   submitMatchSchema,
 } from "@/lib/validation";
 import { calculateEloDelta } from "@/lib/elo";
+import { getEloParams } from "@/lib/data/site-settings";
 import type { ActionResult, MatchOutcome } from "@/lib/types";
-
-const MIN_RATING = 100;
 
 export interface SubmitMatchPayload {
   inseritoreId: string;
@@ -58,6 +57,10 @@ async function rebuildRankingFromHistory(
     console.error("rebuildRankingFromHistory failed:", membersError ?? matchesError);
     return false;
   }
+
+  // Rebuild with the currently persisted rating parameters so an admin edit
+  // of the K factor / floor is reflected in the recomputed ranking.
+  const eloParams = await getEloParams();
 
   const membersById = new Map(
     members.map((member) => [member.id, member]),
@@ -170,13 +173,17 @@ async function rebuildRankingFromHistory(
       ? { member: avversario, state: avversarioState }
       : { member: inseritore, state: inseritoreState };
 
-    const delta = calculateEloDelta(winner.state.punti, loser.state.punti);
+    const delta = calculateEloDelta(
+      winner.state.punti,
+      loser.state.punti,
+      eloParams,
+    );
 
-    winner.state.punti = Math.max(MIN_RATING, winner.state.punti + delta);
+    winner.state.punti = Math.max(eloParams.minRating, winner.state.punti + delta);
     winner.state.vittorie += 1;
     winner.state.dataUltimaPartita = match.data;
 
-    loser.state.punti = Math.max(MIN_RATING, loser.state.punti - delta);
+    loser.state.punti = Math.max(eloParams.minRating, loser.state.punti - delta);
     loser.state.sconfitte += 1;
     loser.state.dataUltimaPartita = match.data;
 
@@ -289,7 +296,8 @@ export async function submitMatchResult(
 
   const winnerRating = esito === "win" ? inseritore.punti : avversario.punti;
   const loserRating = esito === "win" ? avversario.punti : inseritore.punti;
-  const variazione = calculateEloDelta(winnerRating, loserRating);
+  const eloParams = await getEloParams();
+  const variazione = calculateEloDelta(winnerRating, loserRating, eloParams);
 
   const { error: rpcError } = await supabase.rpc("apply_match_result", {
     p_inseritore_id: inseritoreId,

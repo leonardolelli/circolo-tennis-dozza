@@ -144,16 +144,25 @@ export interface Database {
         Row: {
           id: string;
           maintenance_mode: boolean;
+          elo_k_factor: number;
+          elo_min_rating: number;
+          elo_min_delta: number;
           updated_at: string;
         };
         Insert: {
           id?: string;
           maintenance_mode?: boolean;
+          elo_k_factor?: number;
+          elo_min_rating?: number;
+          elo_min_delta?: number;
           updated_at?: string;
         };
         Update: {
           id?: string;
           maintenance_mode?: boolean;
+          elo_k_factor?: number;
+          elo_min_rating?: number;
+          elo_min_delta?: number;
           updated_at?: string;
         };
         Relationships: [];
