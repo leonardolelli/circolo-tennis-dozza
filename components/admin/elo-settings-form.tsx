@@ -215,10 +215,6 @@ export function EloSettingsForm({ initialParams }: { initialParams: EloParams })
               <Save className="h-4 w-4" />
               {isPending ? "Salvataggio..." : "Salva parametri"}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              Default: K = {DEFAULT_ELO_PARAMS.kFactor}, minimo = {DEFAULT_ELO_PARAMS.minDelta},
-              floor = {DEFAULT_ELO_PARAMS.minRating}.
-            </p>
           </div>
         </CardContent>
       </Card>
