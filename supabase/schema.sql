@@ -139,10 +139,19 @@ create index if not exists sponsor_display_order_idx on public.sponsor (display_
 create table if not exists public.site_settings (
   id text primary key default 'global' check (id = 'global'),
   maintenance_mode boolean not null default false,
+  -- Elo-style rating parameters (see lib/elo.ts and /admin/punteggi).
+  elo_k_factor integer not null default 32,
+  elo_min_rating integer not null default 100,
+  elo_min_delta integer not null default 1,
   updated_at timestamptz not null default now()
 );
 
-comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode.';
+alter table public.site_settings
+  add column if not exists elo_k_factor integer not null default 32,
+  add column if not exists elo_min_rating integer not null default 100,
+  add column if not exists elo_min_delta integer not null default 1;
+
+comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode and the Elo rating parameters.';
 
 insert into public.site_settings (id)
 values ('global')
@@ -245,9 +254,15 @@ declare
   v_now timestamptz := now();
   v_result_id uuid;
   v_result_data timestamptz;
-  -- Ratings never drop below this floor, mirroring MIN_RATING in lib/elo.ts.
-  v_min_rating constant integer := 100;
+  -- Ratings never drop below this floor. Read from site_settings so the SQL
+  -- side always mirrors the (admin-configurable) MIN_RATING in lib/elo.ts.
+  v_min_rating integer;
 begin
+  select coalesce(
+    (select elo_min_rating from public.site_settings where id = 'global'),
+    100
+  ) into v_min_rating;
+
   if p_esito_inseritore not in ('win', 'loss') then
     raise exception 'invalid esito_inseritore: %', p_esito_inseritore;
   end if;

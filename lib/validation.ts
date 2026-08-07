@@ -115,6 +115,19 @@ export const createAdminMatchSchema = z
   });
 export type CreateAdminMatchInput = z.infer<typeof createAdminMatchSchema>;
 
+/** Input accepted by the `updateEloSettings` Server Action (admin only). */
+export const eloSettingsSchema = z
+  .object({
+    kFactor: z.coerce.number().int().min(1).max(200),
+    minRating: z.coerce.number().int().min(0).max(5000),
+    minDelta: z.coerce.number().int().min(1).max(100),
+  })
+  .refine((data) => data.minDelta <= data.kFactor, {
+    message: "Lo spostamento minimo non può superare lo spostamento massimo (K).",
+    path: ["minDelta"],
+  });
+export type EloSettingsInput = z.infer<typeof eloSettingsSchema>;
+
 /**
  * Strips characters that are meaningful in PostgREST's filter/ILIKE syntax
  * (`,` `(` `)` separate/group `.or()` conditions; `%` `_` are ILIKE

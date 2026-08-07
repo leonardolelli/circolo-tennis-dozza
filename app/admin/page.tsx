@@ -142,7 +142,7 @@ async function DashboardContent() {
           value={matchesLast30Days}
           icon={TrendingUp}
         />
-        <StatCard label="Punteggio medio" value={averagePoints} icon={Trophy} />
+        {/* <StatCard label="Punteggio medio" value={averagePoints} icon={Trophy} /> */}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
