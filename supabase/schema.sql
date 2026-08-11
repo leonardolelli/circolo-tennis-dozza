@@ -258,8 +258,11 @@ declare
   -- side always mirrors the (admin-configurable) MIN_RATING in lib/elo.ts.
   v_min_rating integer;
 begin
+  -- Note: `id` is qualified because the RETURNS TABLE output parameter `id`
+  -- shadows the site_settings.id column inside this function; leaving it
+  -- unqualified raises "column reference id is ambiguous" (SQLSTATE 42702).
   select coalesce(
-    (select elo_min_rating from public.site_settings where id = 'global'),
+    (select elo_min_rating from public.site_settings where site_settings.id = 'global'),
     100
   ) into v_min_rating;
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Swords, TrendingUp, Trophy, Users } from "lucide-react";
+import { Swords, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/admin/stat-card";
@@ -75,12 +75,6 @@ async function DashboardContent() {
   const totalMembers = members.length;
   const totalMatches = totalMatchesResult.count ?? 0;
   const matchesLast30Days = matchesLast30DaysResult.count ?? 0;
-  const averagePoints =
-    totalMembers > 0
-      ? Math.round(
-          members.reduce((sum, member) => sum + member.punti, 0) / totalMembers,
-        )
-      : 0;
 
   const topByPoints = [...members]
     .sort((a, b) => b.punti - a.punti)
@@ -142,7 +136,6 @@ async function DashboardContent() {
           value={matchesLast30Days}
           icon={TrendingUp}
         />
-        {/* <StatCard label="Punteggio medio" value={averagePoints} icon={Trophy} /> */}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

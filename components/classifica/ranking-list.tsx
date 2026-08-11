@@ -15,11 +15,15 @@ const MEDAL_COLORS = ["text-yellow-500", "text-zinc-400", "text-amber-700"];
 export function RankingList({
   members,
   players = members,
-  rankStart = 1,
+  ranks,
 }: {
   members: SocioPublic[];
   players?: SocioPublic[];
-  rankStart?: number;
+  /**
+   * Overall 1-based ranking keyed by member id. Used when `members` is a
+   * filtered subset so each row keeps its real position in the classifica.
+   */
+  ranks?: Record<string, number>;
 }) {
   const [selectedOpponent, setSelectedOpponent] = useState<SocioPublic | null>(
     null,
@@ -38,7 +42,7 @@ export function RankingList({
     <>
       <Card className="divide-y overflow-hidden p-0">
         {members.map((member, index) => {
-          const rank = rankStart + index;
+          const rank = ranks?.[member.id] ?? index + 1;
           return (
             <button
               key={member.id}

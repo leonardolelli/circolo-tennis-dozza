@@ -1,25 +1,29 @@
-import Link from "next/link";
+"use client";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { getPageNumbers } from "@/lib/pagination";
 import { buttonVariants } from "@/components/ui/button";
 
-interface PaginationProps {
+interface ClientPaginationProps {
   currentPage: number;
   totalPages: number;
-  /** Builds the href for a given page number, e.g. `(p) => `?page=${p}``. */
-  buildHref: (page: number) => string;
+  /** Invoked with the requested page when a page button is clicked. */
+  onPageChange: (page: number) => void;
   className?: string;
 }
 
-/** Server-driven pagination (plain links) so it works with JS disabled. */
-export function Pagination({
+/**
+ * Client-side pagination (buttons, no navigation) for in-memory lists, so
+ * page changes never trigger a server round-trip or a new DB fetch.
+ */
+export function ClientPagination({
   currentPage,
   totalPages,
-  buildHref,
+  onPageChange,
   className,
-}: PaginationProps) {
+}: ClientPaginationProps) {
   if (totalPages <= 1) return null;
 
   const pages = getPageNumbers(currentPage, totalPages);
@@ -31,10 +35,10 @@ export function Pagination({
       aria-label="Paginazione"
       className={cn("flex items-center justify-center gap-1", className)}
     >
-      <Link
-        href={buildHref(Math.max(1, currentPage - 1))}
-        aria-disabled={isFirstPage}
-        tabIndex={isFirstPage ? -1 : undefined}
+      <button
+        type="button"
+        disabled={isFirstPage}
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         className={cn(
           buttonVariants({ variant: "outline", size: "icon" }),
           isFirstPage && "pointer-events-none opacity-40",
@@ -42,7 +46,7 @@ export function Pagination({
       >
         <ChevronLeft className="h-4 w-4" />
         <span className="sr-only">Pagina precedente</span>
-      </Link>
+      </button>
 
       {pages.map((page, index) =>
         page === "ellipsis" ? (
@@ -53,9 +57,10 @@ export function Pagination({
             …
           </span>
         ) : (
-          <Link
+          <button
             key={page}
-            href={buildHref(page)}
+            type="button"
+            onClick={() => onPageChange(page)}
             aria-current={page === currentPage ? "page" : undefined}
             className={cn(
               buttonVariants({
@@ -65,14 +70,14 @@ export function Pagination({
             )}
           >
             {page}
-          </Link>
+          </button>
         ),
       )}
 
-      <Link
-        href={buildHref(Math.min(totalPages, currentPage + 1))}
-        aria-disabled={isLastPage}
-        tabIndex={isLastPage ? -1 : undefined}
+      <button
+        type="button"
+        disabled={isLastPage}
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
         className={cn(
           buttonVariants({ variant: "outline", size: "icon" }),
           isLastPage && "pointer-events-none opacity-40",
@@ -80,7 +85,7 @@ export function Pagination({
       >
         <ChevronRight className="h-4 w-4" />
         <span className="sr-only">Pagina successiva</span>
-      </Link>
+      </button>
     </nav>
   );
 }
