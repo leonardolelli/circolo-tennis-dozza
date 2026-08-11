@@ -2,6 +2,37 @@ import { Client } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Project root = parent of this script's directory (supabase/ -> project root),
+// so the script works no matter which directory it is launched from.
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+
+/**
+ * Minimal dotenv-style loader. The root .env.local is not loaded automatically
+ * when running a standalone script with tsx (only Next.js loads it), so this
+ * populates process.env for any key that is not already defined.
+ */
+function loadEnvFile(filePath: string) {
+    if (!fs.existsSync(filePath)) return;
+    const raw = fs.readFileSync(filePath, 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        let value = trimmed.slice(eq + 1).trim();
+        // Strip surrounding double quotes and unescape common sequences.
+        if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
+            value = value.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        }
+        if (key && process.env[key] === undefined) {
+            process.env[key] = value;
+        }
+    }
+}
+
+loadEnvFile(path.join(PROJECT_ROOT, '.env.local'));
+
 const CONNECTION_STRING = process.env.POSTGRES_URL_NON_POOLING;
 
 if (!CONNECTION_STRING) {
@@ -9,8 +40,16 @@ if (!CONNECTION_STRING) {
 }
 
 async function applySchema() {
+    // pg 8.x maps `sslmode=require` to `verify-full`, which validates the cert
+    // chain and rejects Supabase's pooler certificate. Strip it so the explicit
+    // `ssl: { rejectUnauthorized: false }` option below takes effect (TLS is
+    // still used, it just doesn't verify the chain — fine for this dev script).
+    const [base, query = ''] = CONNECTION_STRING.split('?');
+    const params = query.split('&').filter((p) => p && !p.startsWith('sslmode='));
+    const connectionString = params.length ? `${base}?${params.join('&')}` : base;
+
     const client = new Client({
-        connectionString: CONNECTION_STRING,
+        connectionString,
         ssl: {
             rejectUnauthorized: false // Richiesto per connettersi in sicurezza a Supabase
         }
@@ -22,7 +61,7 @@ async function applySchema() {
         console.log('✅ Connessione riuscita!');
 
         // Legge il file schema.sql locale
-        const schemaPath = path.join(process.cwd(), 'schema.sql');
+        const schemaPath = path.join(__dirname, 'schema.sql');
         console.log(`📖 Lettura del file: ${schemaPath}`);
         const sql = fs.readFileSync(schemaPath, 'utf8');
 
