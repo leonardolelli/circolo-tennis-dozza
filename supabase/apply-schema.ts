@@ -39,12 +39,18 @@ if (!CONNECTION_STRING) {
     throw new Error('Missing POSTGRES_URL_NON_POOLING environment variable.');
 }
 
+// Capture the value after the guard so its type is `string` below: TypeScript
+// does not carry the narrowing of a const into the body of a (hoisted) function
+// declaration, so referencing CONNECTION_STRING inside applySchema() would
+// still be `string | undefined`.
+const DATABASE_URL = CONNECTION_STRING;
+
 async function applySchema() {
     // pg 8.x maps `sslmode=require` to `verify-full`, which validates the cert
     // chain and rejects Supabase's pooler certificate. Strip it so the explicit
     // `ssl: { rejectUnauthorized: false }` option below takes effect (TLS is
     // still used, it just doesn't verify the chain — fine for this dev script).
-    const [base, query = ''] = CONNECTION_STRING.split('?');
+    const [base, query = ''] = DATABASE_URL.split('?');
     const params = query.split('&').filter((p) => p && !p.startsWith('sslmode='));
     const connectionString = params.length ? `${base}?${params.join('&')}` : base;
 
