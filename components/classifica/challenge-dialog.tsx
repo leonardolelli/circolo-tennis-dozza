@@ -63,7 +63,11 @@ export function ChallengeDialog({
         setError(result.error);
         return;
       }
-      window.open(result.data.whatsappUrl, "_blank", "noopener,noreferrer");
+      // Navigate the current tab to the wa.me deep link. `window.open`
+      // would be blocked by Safari's popup blocker here because it runs
+      // after the async PIN verification (no longer a direct user gesture),
+      // so it never fired on iOS. Plain navigation is always allowed.
+      window.location.href = result.data.whatsappUrl;
       onOpenChange(false);
     });
   }
