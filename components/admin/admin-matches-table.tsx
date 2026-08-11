@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { deleteMatch, updateMatch } from "@/app/actions/matches";
 import { PlayerCombobox } from "@/components/shared/player-combobox";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,6 +59,16 @@ function inferOpponentId(match: Partita) {
   return match.id_avversario;
 }
 
+/**
+ * Points that changed hands in a match: "±X" when the swing is symmetric
+ * (winner +X, loser −X), otherwise "+X" for the winner's gain.
+ */
+function variationLabel(match: Partita) {
+  const winner = match.punti_vincitore_variazioni;
+  const loser = match.punti_perdente_variazioni;
+  return winner === loser ? `±${winner}` : `+${winner}`;
+}
+
 export function AdminMatchesTable({
   matches,
   players,
@@ -94,6 +105,7 @@ export function AdminMatchesTable({
               </TableHead>
               <TableHead>Partita</TableHead>
               <TableHead className="hidden sm:table-cell">Punteggio</TableHead>
+              <TableHead className="text-right">Variazione punti</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,6 +142,14 @@ export function AdminMatchesTable({
                   </div>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">{match.risultato}</TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant="outline"
+                    className="border-tennis/40 text-tennis"
+                  >
+                    {variationLabel(match)}
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

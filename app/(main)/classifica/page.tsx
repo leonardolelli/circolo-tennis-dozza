@@ -3,22 +3,16 @@ import Link from "next/link";
 import { Award, History } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { MembersSearch } from "@/components/admin/members-search";
-import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RankingList } from "@/components/classifica/ranking-list";
 import { AddMatchDialog } from "@/components/classifica/add-match-dialog";
+import { ClassificaBrowser } from "@/components/classifica/classifica-browser";
 import { getRankedMembers } from "@/lib/data/members";
-import { copy, getPlayerLabel } from "@/lib/i18n";
+import { copy } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
 
 export const metadata = {
   title: copy.classifica.title,
 };
-
-const PATHNAME = "/classifica";
-const PAGE_SIZE = 10;
 
 interface ClassificaSearchParams {
   page?: string;
@@ -89,61 +83,19 @@ async function ClassificaContent({
 }: {
   searchParams: Promise<ClassificaSearchParams>;
 }) {
+  // Fetch the ranking once; filtering and pagination happen client-side in
+  // ClassificaBrowser, so typing never triggers another DB query.
   const members = await getRankedMembers();
   const params = await searchParams;
-  const query = sanitizeSearchQuery(params.q ?? "");
-  const currentPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
-
-  const filteredMembers = members.filter((member) => {
-    if (!query) return true;
-    const fullName = `${member.nome} ${member.cognome}`.toLowerCase();
-    const reversedName = `${member.cognome} ${member.nome}`.toLowerCase();
-    const normalizedQuery = query.toLowerCase();
-    return (
-      fullName.includes(normalizedQuery) ||
-      reversedName.includes(normalizedQuery)
-    );
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const start = (safePage - 1) * PAGE_SIZE;
-  const visibleMembers = filteredMembers.slice(start, start + PAGE_SIZE);
-
-  function buildHref(page: number) {
-    const next = new URLSearchParams();
-    if (query) next.set("q", query);
-    if (page > 1) next.set("page", String(page));
-    const queryString = next.toString();
-    return queryString ? `${PATHNAME}?${queryString}` : PATHNAME;
-  }
+  const initialQuery = sanitizeSearchQuery(params.q ?? "");
+  const initialPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {filteredMembers.length} {getPlayerLabel(filteredMembers.length)} in classifica.
-        </p>
-        <MembersSearch pathname={PATHNAME} query={query} />
-      </div>
-
-      <RankingList members={visibleMembers} players={members} rankStart={start + 1} />
-
-      <Pagination currentPage={safePage} totalPages={totalPages} buildHref={buildHref} />
-
-      <Card className="space-y-2 p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">{copy.classifica.usage.title}</p>
-        <p>
-          {copy.classifica.usage.challenge}
-        </p>
-        <p>
-          {copy.classifica.usage.search}
-        </p>
-        <p>
-          {copy.classifica.usage.frozen}
-        </p>
-      </Card>
-    </div>
+    <ClassificaBrowser
+      members={members}
+      initialQuery={initialQuery}
+      initialPage={initialPage}
+    />
   );
 }
 
