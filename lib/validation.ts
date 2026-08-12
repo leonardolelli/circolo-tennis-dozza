@@ -128,6 +128,21 @@ export const eloSettingsSchema = z
   });
 export type EloSettingsInput = z.infer<typeof eloSettingsSchema>;
 
+/** Input accepted by the `updateCategorySettings` Server Action (admin only). */
+export const categorySettingsSchema = z
+  .object({
+    goldMin: z.coerce.number().int().min(0).max(5000),
+    silverMin: z.coerce.number().int().min(0).max(5000),
+    goldMaxRankDelta: z.coerce.number().int().min(1).max(50),
+    silverMaxRankDelta: z.coerce.number().int().min(1).max(50),
+    bronzeMaxRankDelta: z.coerce.number().int().min(1).max(50),
+  })
+  .refine((data) => data.silverMin <= data.goldMin, {
+    message: "La soglia della categoria Argento non può superare quella della categoria Oro.",
+    path: ["silverMin"],
+  });
+export type CategorySettingsInput = z.infer<typeof categorySettingsSchema>;
+
 /**
  * Strips characters that are meaningful in PostgREST's filter/ILIKE syntax
  * (`,` `(` `)` separate/group `.or()` conditions; `%` `_` are ILIKE

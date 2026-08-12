@@ -151,7 +151,16 @@ alter table public.site_settings
   add column if not exists elo_min_rating integer not null default 100,
   add column if not exists elo_min_delta integer not null default 1;
 
-comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode and the Elo rating parameters.';
+-- Player category thresholds and per-category challenge rank limits (see
+-- lib/categories.ts and the "Categorie giocatori" section on /admin/soci).
+alter table public.site_settings
+  add column if not exists category_gold_min integer not null default 2000,
+  add column if not exists category_silver_min integer not null default 1000,
+  add column if not exists category_gold_max_rank_delta integer not null default 4,
+  add column if not exists category_silver_max_rank_delta integer not null default 6,
+  add column if not exists category_bronze_max_rank_delta integer not null default 6;
+
+comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode, the Elo rating parameters and the player category configuration.';
 
 insert into public.site_settings (id)
 values ('global')

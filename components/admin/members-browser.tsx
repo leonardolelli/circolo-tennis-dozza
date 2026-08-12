@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ClientPagination } from "@/components/ui/client-pagination";
 import { MembersTable } from "@/components/admin/members-table";
 import { sanitizeSearchQuery } from "@/lib/validation";
+import type { CategoryConfig } from "@/lib/categories";
 import type { SocioAdmin } from "@/lib/types";
 
 const PAGE_SIZE = 10;
@@ -22,10 +23,12 @@ export function MembersBrowser({
   members,
   initialQuery,
   initialPage,
+  categoryConfig,
 }: {
   members: SocioAdmin[];
   initialQuery: string;
   initialPage: number;
+  categoryConfig: CategoryConfig;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -90,7 +93,10 @@ export function MembersBrowser({
         />
       </div>
 
-      <MembersTable members={visibleMembers} />
+      <MembersTable
+        members={visibleMembers}
+        categoryConfig={categoryConfig}
+      />
 
       <ClientPagination
         currentPage={safePage}

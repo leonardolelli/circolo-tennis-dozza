@@ -4,6 +4,12 @@ import bcrypt from "bcryptjs";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { challengeSchema } from "@/lib/validation";
 import { buildChallengeMessage, buildWhatsAppLink } from "@/lib/whatsapp";
+import { getCategoryConfig } from "@/lib/data/site-settings";
+import {
+  getCategory,
+  getCategoryLabel,
+  getMaxRankDelta,
+} from "@/lib/categories";
 import type { ActionResult } from "@/lib/types";
 
 export interface RequestChallengePayload {
@@ -36,7 +42,7 @@ export async function requestChallenge(
   const supabase = createServiceRoleClient();
   const { data: players, error } = await supabase
     .from("soci")
-    .select("id, nome, cognome, pin, telefono, congelato")
+    .select("id, nome, cognome, pin, telefono, congelato, punti")
     .in("id", [requesterId, opponentId]);
 
   if (error || !players || players.length !== 2) {
@@ -59,6 +65,36 @@ export async function requestChallenge(
   const isPinValid = await bcrypt.compare(requesterPin, requester.pin);
   if (!isPinValid) {
     return { success: false, error: "PIN errato." };
+  }
+
+  // Enforce the per-category "max positions above" rule: a member may only
+  // challenge opponents that are at most N places higher in the ranking,
+  // where N depends on their category (e.g. gold up to 4). Challenging
+  // someone lower in the ranking is always allowed.
+  const categoryConfig = await getCategoryConfig();
+  const { data: ranking } = await supabase
+    .from("soci")
+    .select("id, punti")
+    .order("punti", { ascending: false });
+  const rankById = new Map<string, number>();
+  (ranking ?? []).forEach((player, index) => {
+    rankById.set(player.id, index + 1);
+  });
+
+  const requesterRank = rankById.get(requester.id);
+  const opponentRank = rankById.get(opponent.id);
+
+  if (requesterRank && opponentRank && opponentRank < requesterRank) {
+    const category = getCategory(requester.punti, categoryConfig);
+    const maxRankDelta = getMaxRankDelta(category, categoryConfig);
+    const positionsAbove = requesterRank - opponentRank;
+
+    if (positionsAbove > maxRankDelta) {
+      return {
+        success: false,
+        error: `Puoi sfidare al massimo ${maxRankDelta} posizioni sopra di te in classifica (categoria ${getCategoryLabel(category)}). L'avversario selezionato è ${positionsAbove} posizioni sopra di te.`,
+      };
+    }
   }
 
   const message = buildChallengeMessage(

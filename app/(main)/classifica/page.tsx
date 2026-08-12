@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AddMatchDialog } from "@/components/classifica/add-match-dialog";
 import { ClassificaBrowser } from "@/components/classifica/classifica-browser";
 import { getRankedMembers } from "@/lib/data/members";
+import { getCategoryConfig } from "@/lib/data/site-settings";
 import { copy } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
 
@@ -85,7 +86,10 @@ async function ClassificaContent({
 }) {
   // Fetch the ranking once; filtering and pagination happen client-side in
   // ClassificaBrowser, so typing never triggers another DB query.
-  const members = await getRankedMembers();
+  const [members, categoryConfig] = await Promise.all([
+    getRankedMembers(),
+    getCategoryConfig(),
+  ]);
   const params = await searchParams;
   const initialQuery = sanitizeSearchQuery(params.q ?? "");
   const initialPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
@@ -95,6 +99,7 @@ async function ClassificaContent({
       members={members}
       initialQuery={initialQuery}
       initialPage={initialPage}
+      categoryConfig={categoryConfig}
     />
   );
 }

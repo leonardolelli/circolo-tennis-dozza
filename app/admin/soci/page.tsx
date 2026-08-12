@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { AddMemberDialog } from "@/components/admin/add-member-dialog";
 import { MembersCsvTools } from "@/components/admin/members-csv-tools";
 import { MembersBrowser } from "@/components/admin/members-browser";
+import { CategorySettingsCard } from "@/components/admin/category-settings-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { copy } from "@/lib/i18n";
+import { getCategoryConfig } from "@/lib/data/site-settings";
 import { sanitizeSearchQuery } from "@/lib/validation";
 import type { SocioAdmin } from "@/lib/types";
 
@@ -64,16 +66,22 @@ async function SociContent({
   }
 
   const members: SocioAdmin[] = data ?? [];
+  const categoryConfig = await getCategoryConfig();
   const params = await searchParams;
   const initialQuery = sanitizeSearchQuery(params.q ?? "");
   const initialPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   return (
-    <MembersBrowser
-      members={members}
-      initialQuery={initialQuery}
-      initialPage={initialPage}
-    />
+    <div className="flex flex-col gap-8">
+      <MembersBrowser
+        members={members}
+        initialQuery={initialQuery}
+        initialPage={initialPage}
+        categoryConfig={categoryConfig}
+      />
+
+      <CategorySettingsCard initialConfig={categoryConfig} />
+    </div>
   );
 }
 
