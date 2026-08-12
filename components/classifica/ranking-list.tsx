@@ -7,6 +7,9 @@ import { Card } from "@/components/ui/card";
 import { formatWinRate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { SocioPublic } from "@/lib/types";
+import type { CategoryConfig } from "@/lib/categories";
+import { getCategory } from "@/lib/categories";
+import { CategoryBadge } from "@/components/shared/category-badge";
 import { ChallengeDialog } from "@/components/classifica/challenge-dialog";
 
 const MEDAL_COLORS = ["text-yellow-500", "text-zinc-400", "text-amber-700"];
@@ -16,6 +19,7 @@ export function RankingList({
   members,
   players = members,
   ranks,
+  categoryConfig,
 }: {
   members: SocioPublic[];
   players?: SocioPublic[];
@@ -24,6 +28,8 @@ export function RankingList({
    * filtered subset so each row keeps its real position in the classifica.
    */
   ranks?: Record<string, number>;
+  /** Player category thresholds, used to label each row's category. */
+  categoryConfig: CategoryConfig;
 }) {
   const [selectedOpponent, setSelectedOpponent] = useState<SocioPublic | null>(
     null,
@@ -73,6 +79,9 @@ export function RankingList({
                   <span className="truncate">
                     {member.nome} {member.cognome}
                   </span>
+                  <CategoryBadge
+                    category={getCategory(member.punti, categoryConfig)}
+                  />
                   {member.congelato && (
                     <Snowflake className="h-4 w-4 shrink-0 text-sky-400" />
                   )}
@@ -100,6 +109,7 @@ export function RankingList({
         onOpenChange={setIsChallengeOpen}
         opponent={selectedOpponent}
         players={players.filter((player) => !player.congelato)}
+        categoryConfig={categoryConfig}
       />
     </>
   );

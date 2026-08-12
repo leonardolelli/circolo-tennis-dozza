@@ -9,6 +9,7 @@ import { ClientPagination } from "@/components/ui/client-pagination";
 import { RankingList } from "@/components/classifica/ranking-list";
 import { copy, getPlayerLabel } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
+import type { CategoryConfig } from "@/lib/categories";
 import type { SocioPublic } from "@/lib/types";
 
 const PAGE_SIZE = 10;
@@ -24,10 +25,12 @@ export function ClassificaBrowser({
   members,
   initialQuery,
   initialPage,
+  categoryConfig,
 }: {
   members: SocioPublic[];
   initialQuery: string;
   initialPage: number;
+  categoryConfig: CategoryConfig;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -107,6 +110,7 @@ export function ClassificaBrowser({
         members={visibleMembers}
         players={members}
         ranks={rankByMemberId}
+        categoryConfig={categoryConfig}
       />
 
       <ClientPagination

@@ -147,6 +147,11 @@ export interface Database {
           elo_k_factor: number;
           elo_min_rating: number;
           elo_min_delta: number;
+          category_gold_min: number;
+          category_silver_min: number;
+          category_gold_max_rank_delta: number;
+          category_silver_max_rank_delta: number;
+          category_bronze_max_rank_delta: number;
           updated_at: string;
         };
         Insert: {
@@ -155,6 +160,11 @@ export interface Database {
           elo_k_factor?: number;
           elo_min_rating?: number;
           elo_min_delta?: number;
+          category_gold_min?: number;
+          category_silver_min?: number;
+          category_gold_max_rank_delta?: number;
+          category_silver_max_rank_delta?: number;
+          category_bronze_max_rank_delta?: number;
           updated_at?: string;
         };
         Update: {
@@ -163,6 +173,11 @@ export interface Database {
           elo_k_factor?: number;
           elo_min_rating?: number;
           elo_min_delta?: number;
+          category_gold_min?: number;
+          category_silver_min?: number;
+          category_gold_max_rank_delta?: number;
+          category_silver_max_rank_delta?: number;
+          category_bronze_max_rank_delta?: number;
           updated_at?: string;
         };
         Relationships: [];

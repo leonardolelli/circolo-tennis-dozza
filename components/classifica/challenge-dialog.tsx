@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { MessageCircle } from "lucide-react";
+import { Info, MessageCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PlayerCombobox } from "@/components/shared/player-combobox";
+import { CategoryBadge } from "@/components/shared/category-badge";
 import { requestChallenge } from "@/app/actions/challenge";
 import { PIN_LENGTH } from "@/lib/validation";
+import {
+  getCategory,
+  getCategoryLabel,
+  getMaxRankDelta,
+  type CategoryConfig,
+} from "@/lib/categories";
 import type { SocioPublic } from "@/lib/types";
 
 interface ChallengeDialogProps {
@@ -24,6 +31,7 @@ interface ChallengeDialogProps {
   onOpenChange: (open: boolean) => void;
   opponent: SocioPublic | null;
   players: SocioPublic[];
+  categoryConfig: CategoryConfig;
 }
 
 /**
@@ -36,6 +44,7 @@ export function ChallengeDialog({
   onOpenChange,
   opponent,
   players,
+  categoryConfig,
 }: ChallengeDialogProps) {
   const [requester, setRequester] = useState<SocioPublic | null>(null);
   const [pin, setPin] = useState("");
@@ -91,6 +100,31 @@ export function ChallengeDialog({
             value={requester}
             onChange={setRequester}
           />
+          {requester && (
+            <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-tennis" />
+              <div>
+                La tua categoria è{" "}
+                <CategoryBadge
+                  category={getCategory(requester.punti, categoryConfig)}
+                  className="align-middle"
+                />{" "}
+                e puoi sfidare fino a{" "}
+                <span className="font-semibold text-foreground">
+                  {getMaxRankDelta(
+                    getCategory(requester.punti, categoryConfig),
+                    categoryConfig,
+                  )}{" "}
+                  posizioni
+                </span>{" "}
+                sopra di te in classifica (
+                {getCategoryLabel(
+                  getCategory(requester.punti, categoryConfig),
+                )}
+                ).
+              </div>
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="requester-pin">
               Il tuo PIN ({PIN_LENGTH} cifre)

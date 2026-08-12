@@ -3,9 +3,15 @@
 import { revalidatePath } from "next/cache";
 
 import { SITE_SETTINGS_ROW_ID } from "@/lib/data/site-settings";
-import { eloSettingsSchema, type EloSettingsInput } from "@/lib/validation";
+import {
+  categorySettingsSchema,
+  eloSettingsSchema,
+  type CategorySettingsInput,
+  type EloSettingsInput,
+} from "@/lib/validation";
 import type { ActionResult } from "@/lib/types";
 import type { EloParams } from "@/lib/elo";
+import type { CategoryConfig } from "@/lib/categories";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 
@@ -116,6 +122,69 @@ export async function updateEloSettings(
         kFactor: parsed.data.kFactor,
         minRating: parsed.data.minRating,
         minDelta: parsed.data.minDelta,
+      },
+    },
+  };
+}
+
+function revalidateCategoryPaths() {
+  revalidatePath("/admin");
+  revalidatePath("/admin/soci");
+  revalidatePath("/classifica");
+  revalidatePath("/classifica/cronologia");
+}
+
+/**
+ * Persists the player category parameters (score thresholds and the maximum
+ * number of ranking positions each category may challenge above itself).
+ * Admin only; changes apply to every future challenge request.
+ */
+export async function updateCategorySettings(
+  params: CategorySettingsInput,
+): Promise<ActionResult<{ categories: CategoryConfig }>> {
+  const admin = await assertAdmin();
+  if (!admin.success) {
+    return admin;
+  }
+
+  const parsed = categorySettingsSchema.safeParse(params);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Parametri non validi.",
+    };
+  }
+
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from("site_settings").upsert({
+    id: SITE_SETTINGS_ROW_ID,
+    category_gold_min: parsed.data.goldMin,
+    category_silver_min: parsed.data.silverMin,
+    category_gold_max_rank_delta: parsed.data.goldMaxRankDelta,
+    category_silver_max_rank_delta: parsed.data.silverMaxRankDelta,
+    category_bronze_max_rank_delta: parsed.data.bronzeMaxRankDelta,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.error("updateCategorySettings failed:", error);
+    return {
+      success: false,
+      error:
+        "Impossibile salvare i parametri delle categorie. Verifica che la tabella site_settings sia presente.",
+    };
+  }
+
+  revalidateCategoryPaths();
+  return {
+    success: true,
+    data: {
+      categories: {
+        goldMin: parsed.data.goldMin,
+        silverMin: parsed.data.silverMin,
+        goldMaxRankDelta: parsed.data.goldMaxRankDelta,
+        silverMaxRankDelta: parsed.data.silverMaxRankDelta,
+        bronzeMaxRankDelta: parsed.data.bronzeMaxRankDelta,
       },
     },
   };

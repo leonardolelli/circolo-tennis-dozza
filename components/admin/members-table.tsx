@@ -35,11 +35,20 @@ import {
 import { deleteMember, toggleMemberFrozen, updateMember } from "@/app/actions/members";
 import { formatDate, formatWinRate } from "@/lib/format";
 import { PIN_LENGTH } from "@/lib/validation";
+import { getCategory } from "@/lib/categories";
+import type { CategoryConfig } from "@/lib/categories";
 import type { ActionResult, SocioAdmin } from "@/lib/types";
+import { CategoryBadge } from "@/components/shared/category-badge";
 
 const INITIAL_STATE: ActionResult | null = null;
 
-export function MembersTable({ members }: { members: SocioAdmin[] }) {
+export function MembersTable({
+  members,
+  categoryConfig,
+}: {
+  members: SocioAdmin[];
+  categoryConfig: CategoryConfig;
+}) {
   const router = useRouter();
   const [selectedMember, setSelectedMember] = useState<SocioAdmin | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -81,8 +90,13 @@ export function MembersTable({ members }: { members: SocioAdmin[] }) {
               <TableRow key={member.id}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col gap-1">
-                    <span>
-                      {member.nome} {member.cognome}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>
+                        {member.nome} {member.cognome}
+                      </span>
+                      <CategoryBadge
+                        category={getCategory(member.punti, categoryConfig)}
+                      />
                     </span>
                     {member.congelato && (
                       <Badge variant="secondary" className="w-fit gap-1">
