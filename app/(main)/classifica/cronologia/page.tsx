@@ -1,6 +1,9 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
 import { MatchesFilters } from "@/components/cronologia/matches-filters";
 import { MatchesTable } from "@/components/cronologia/matches-table";
 import { Pagination } from "@/components/ui/pagination";
@@ -36,13 +39,21 @@ interface CronologiaPageProps {
 export default function CronologiaPage({ searchParams }: CronologiaPageProps) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {copy.cronologia.title}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {copy.cronologia.subtitle}
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {copy.cronologia.title}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {copy.cronologia.subtitle}
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/classifica">
+            <ArrowLeft className="h-4 w-4" />
+            {copy.cronologia.backToRanking}
+          </Link>
+        </Button>
       </div>
 
       <Suspense fallback={<CronologiaSkeleton />}>
