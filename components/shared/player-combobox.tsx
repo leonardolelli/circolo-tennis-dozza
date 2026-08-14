@@ -50,6 +50,24 @@ export function PlayerCombobox({
     }
   }, [disabled]);
 
+  // If the typed text exactly matches a single player's full name
+  // (either "Nome Cognome" or "Cognome Nome"), resolve it immediately.
+  // This lets users type the full name instead of having to pick it from
+  // the dropdown, e.g. the challenge PIN flow on mobile.
+  useEffect(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery || value) return;
+    const exactMatches = players.filter(
+      (player) =>
+        player.id !== excludeId &&
+        (`${player.nome} ${player.cognome}`.toLowerCase() === normalizedQuery ||
+          `${player.cognome} ${player.nome}`.toLowerCase() === normalizedQuery),
+    );
+    if (exactMatches.length === 1) {
+      onChange(exactMatches[0]);
+    }
+  }, [players, query, excludeId, value, onChange]);
+
   const candidates = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return players
