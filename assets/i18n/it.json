@@ -23,7 +23,8 @@
   },
   "cronologia": {
     "title": "Cronologia match",
-    "subtitle": "Storico di tutte le partite registrate dai giocatori."
+    "subtitle": "Storico di tutte le partite registrate dai giocatori.",
+    "backToRanking": "Torna alla classifica"
   },
   "premi": {
     "title": "Premi",
