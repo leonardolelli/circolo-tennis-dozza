@@ -160,7 +160,15 @@ alter table public.site_settings
   add column if not exists category_silver_max_rank_delta integer not null default 6,
   add column if not exists category_bronze_max_rank_delta integer not null default 6;
 
-comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode, the Elo rating parameters and the player category configuration.';
+-- Prizes (free text) that the admin assigns to each monthly award category.
+-- Shown on /classifica/premi next to the "Chi ha vinto di più" etc. cards
+-- (see app/actions/site-settings.ts and components/admin/award-prizes-form.tsx).
+alter table public.site_settings
+  add column if not exists premio_most_wins text,
+  add column if not exists premio_most_matches text,
+  add column if not exists premio_most_losses text;
+
+comment on table public.site_settings is 'Singleton row for global site-wide settings such as maintenance mode, the Elo rating parameters, the player category configuration and the monthly award prizes.';
 
 insert into public.site_settings (id)
 values ('global')

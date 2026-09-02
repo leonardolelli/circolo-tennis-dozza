@@ -4,14 +4,17 @@ import { revalidatePath } from "next/cache";
 
 import { SITE_SETTINGS_ROW_ID } from "@/lib/data/site-settings";
 import {
+  awardPrizesSchema,
   categorySettingsSchema,
   eloSettingsSchema,
+  type AwardPrizesInput,
   type CategorySettingsInput,
   type EloSettingsInput,
 } from "@/lib/validation";
 import type { ActionResult } from "@/lib/types";
 import type { EloParams } from "@/lib/elo";
 import type { CategoryConfig } from "@/lib/categories";
+import type { AwardPrizes } from "@/lib/data/site-settings";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 
@@ -185,6 +188,65 @@ export async function updateCategorySettings(
         goldMaxRankDelta: parsed.data.goldMaxRankDelta,
         silverMaxRankDelta: parsed.data.silverMaxRankDelta,
         bronzeMaxRankDelta: parsed.data.bronzeMaxRankDelta,
+      },
+    },
+  };
+}
+
+function revalidatePrizePaths() {
+  revalidatePath("/admin/premi");
+  revalidatePath("/classifica");
+  revalidatePath("/classifica/premi");
+}
+
+/**
+ * Persists the free-text prize assigned by the admin to each monthly award
+ * category ("Chi ha vinto di più", "Chi ha fatto più partite", "Chi ha perso
+ * di più"). The prizes are shown on the public /classifica/premi page. Admin
+ * only; an empty string clears the prize for that category.
+ */
+export async function updateAwardPrizes(
+  params: AwardPrizesInput,
+): Promise<ActionResult<{ prizes: AwardPrizes }>> {
+  const admin = await assertAdmin();
+  if (!admin.success) {
+    return admin;
+  }
+
+  const parsed = awardPrizesSchema.safeParse(params);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Premi non validi.",
+    };
+  }
+
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from("site_settings").upsert({
+    id: SITE_SETTINGS_ROW_ID,
+    premio_most_wins: parsed.data.mostWins || null,
+    premio_most_matches: parsed.data.mostMatches || null,
+    premio_most_losses: parsed.data.mostLosses || null,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.error("updateAwardPrizes failed:", error);
+    return {
+      success: false,
+      error:
+        "Impossibile salvare i premi. Verifica che la tabella site_settings sia presente.",
+    };
+  }
+
+  revalidatePrizePaths();
+  return {
+    success: true,
+    data: {
+      prizes: {
+        mostWins: parsed.data.mostWins || "",
+        mostMatches: parsed.data.mostMatches || "",
+        mostLosses: parsed.data.mostLosses || "",
       },
     },
   };

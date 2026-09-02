@@ -28,9 +28,10 @@
   },
   "premi": {
     "title": "Premi",
-    "subtitle": "Classifiche mensili che si azzerano automaticamente a inizio mese.",
+    "subtitle": "Si azzerano automaticamente a inizio mese.",
     "backToRanking": "Torna alla classifica",
     "periodLabel": "Periodo attuale:",
+    "prize": "Premio",
     "cards": {
       "mostWins": "Chi ha vinto di più",
       "mostMatches": "Chi ha fatto più partite",

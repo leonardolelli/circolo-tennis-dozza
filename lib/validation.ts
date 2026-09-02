@@ -143,6 +143,19 @@ export const categorySettingsSchema = z
   });
 export type CategorySettingsInput = z.infer<typeof categorySettingsSchema>;
 
+const prizeTextSchema = z
+  .string()
+  .trim()
+  .max(200, "Il premio non può superare 200 caratteri.");
+
+/** Input accepted by the `updateAwardPrizes` Server Action (admin only). */
+export const awardPrizesSchema = z.object({
+  mostWins: prizeTextSchema,
+  mostMatches: prizeTextSchema,
+  mostLosses: prizeTextSchema,
+});
+export type AwardPrizesInput = z.infer<typeof awardPrizesSchema>;
+
 /**
  * Strips characters that are meaningful in PostgREST's filter/ILIKE syntax
  * (`,` `(` `)` separate/group `.or()` conditions; `%` `_` are ILIKE

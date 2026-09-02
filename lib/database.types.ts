@@ -152,6 +152,9 @@ export interface Database {
           category_gold_max_rank_delta: number;
           category_silver_max_rank_delta: number;
           category_bronze_max_rank_delta: number;
+          premio_most_wins: string | null;
+          premio_most_matches: string | null;
+          premio_most_losses: string | null;
           updated_at: string;
         };
         Insert: {
@@ -165,6 +168,9 @@ export interface Database {
           category_gold_max_rank_delta?: number;
           category_silver_max_rank_delta?: number;
           category_bronze_max_rank_delta?: number;
+          premio_most_wins?: string | null;
+          premio_most_matches?: string | null;
+          premio_most_losses?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -178,6 +184,9 @@ export interface Database {
           category_gold_max_rank_delta?: number;
           category_silver_max_rank_delta?: number;
           category_bronze_max_rank_delta?: number;
+          premio_most_wins?: string | null;
+          premio_most_matches?: string | null;
+          premio_most_losses?: string | null;
           updated_at?: string;
         };
         Relationships: [];
