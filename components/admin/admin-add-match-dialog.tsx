@@ -92,7 +92,8 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
         <DialogHeader>
           <DialogTitle>Aggiungi match</DialogTitle>
           <DialogDescription>
-            Registra un risultato come amministratore, senza richiesta di PIN.
+            Registra un risultato come amministratore, con attribuzione ai
+            giocatori selezionati.
           </DialogDescription>
         </DialogHeader>
 

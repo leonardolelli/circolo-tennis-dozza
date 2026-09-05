@@ -7,6 +7,8 @@ import { MaintenanceNotice } from "@/components/layout/maintenance-banner";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { getSiteSettings } from "@/lib/data/site-settings";
+import { getCurrentSocio } from "@/lib/auth";
+import { IS_VERCEL_DEPLOYMENT } from "@/lib/env";
 
 /**
  * Member-facing shell: a vertical sidebar on desktop (`md:` and up) and a
@@ -23,9 +25,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 async function AppShellContent({ children }: { children: ReactNode }) {
-  const settings = await getSiteSettings();
+  const [settings, currentSocio] = await Promise.all([
+    getSiteSettings(),
+    getCurrentSocio(),
+  ]);
 
-  if (settings.maintenanceMode) {
+  if (settings.maintenanceMode && IS_VERCEL_DEPLOYMENT) {
     return (
       <div className="min-h-svh bg-background">
         <MaintenanceNotice fullscreen />
@@ -33,11 +38,16 @@ async function AppShellContent({ children }: { children: ReactNode }) {
     );
   }
 
+  const userName = currentSocio
+    ? `${currentSocio.nome} ${currentSocio.cognome}`.trim()
+    : null;
+  const isAdmin = currentSocio?.is_admin ?? false;
+
   return (
     <div className="min-h-svh bg-background">
-      <AppSidebar />
+      <AppSidebar userName={userName} isAdmin={isAdmin} />
       <div className="flex min-h-svh flex-col md:pl-64">
-        <MobileHeader />
+        <MobileHeader userName={userName} />
         <main className="flex-1 animate-fade-in pb-24 md:pb-10">
           {children}
         </main>

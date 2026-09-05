@@ -16,12 +16,14 @@
 ## Funzionalità
 
 - **Home**: hero, griglia sponsor, contatti rapidi (chiamata / WhatsApp) della segreteria.
-- **Classifica**: elenco soci ordinato per punti, sfida via WhatsApp protetta da PIN, form
-  "Aggiungi risultato" a step (identità + PIN → avversario → esito e punteggio).
+- **Classifica** (area riservata ai soci autenticati): elenco soci ordinato per punti,
+  sfida via WhatsApp in un tocco (con verifica della regola per categoria), form
+  "Aggiungi risultato" a step (avversario → esito e punteggio), registrato a nome
+  del socio loggato.
 - **Cronologia match**: storico paginato (10 per pagina), filtrabile per nome/esito e
   ordinabile per data.
-- **Admin** (`/admin`, protetto da middleware + Supabase Auth): statistiche del circolo,
-  gestione soci, aggiunta nuovi soci con PIN a 8 cifre.
+- **Admin** (`/admin`, accessibile solo agli admin-soci): statistiche del circolo,
+  gestione soci e dei relativi account di accesso (username + password).
 
 ## Configurazione
 
@@ -31,9 +33,10 @@
    `apply_match_result` usata per registrare i risultati in modo atomico.
 2. Copia `.env.example` in `.env.local` e compila le variabili con i valori del
    tuo progetto Supabase (Project Settings → API).
-3. Crea il primo account amministratore da **Supabase Dashboard → Authentication
-   → Users → Add user** (email + password): non esiste una pagina di
-   registrazione pubblica, per design.
+3. Crea il **primo amministratore** con lo script [supabase/seed-admin.mjs](supabase/seed-admin.mjs)
+   (crea l'account Supabase Auth e il socio collegato con `is_admin = true`).
+   Tutti gli altri account (soci e admin) vengono creati dall'app in `/admin/soci`
+   con username + password; non esiste una pagina di registrazione pubblica.
 4. Installa le dipendenze e avvia il progetto:
 
    ```bash
@@ -41,15 +44,21 @@
    npm run dev
    ```
 
-5. Accedi come admin da `/login` e aggiungi i soci da `/admin/soci`.
+5. Accedi da `/login` con lo username del primo amministratore e aggiungi i soci
+   da `/admin/soci` (username + password da comunicare a ogni giocatore).
 
 ## Modello di sicurezza (riassunto)
 
 - Le chiavi pubbliche (`anon`) possono solo leggere; per `soci` vedono unicamente
-  le colonne pubbliche (mai `pin`, e `telefono` solo per sessioni admin autenticate).
-- Ogni scrittura passa da una Server Action che verifica prima l'autorizzazione
-  (sessione admin per la gestione soci, PIN con bcrypt per le partite e le sfide)
-  e solo dopo usa la chiave `service_role` (segreta, solo server) per bypassare la RLS.
+  le colonne pubbliche. I dati sensibili (`telefono`, `username`, `user_id`,
+  `is_admin`) sono leggibili solo con la chiave `service_role`.
+- Tutti gli account (soci e admin) sono collegati a una riga `soci` tramite
+  `user_id`; l'identità delle azioni (registrare un risultato, sfidare) viene
+  SEMPRE derivata dalla sessione server-side, mai da input del client.
+- L'area `/classifica` richiede il login (proxy/middleware); `/admin` richiede un
+  socio con `is_admin = true`. Ogni scrittura passa da una Server Action che
+  verifica l'autorizzazione e solo dopo usa la chiave `service_role` (segreta,
+  solo server) per bypassare la RLS.
 - Il calcolo del punteggio (stile Elo, vedi [lib/elo.ts](lib/elo.ts)) vive in
   TypeScript; la scrittura atomica (aggiornamento punti + storico) è isolata in
   un'unica funzione SQL (`apply_match_result`) con row locking, per evitare
@@ -60,12 +69,12 @@
 ```
 app/
   (main)/             Home, Classifica, Cronologia (con Sidebar/Bottom Nav)
-  admin/               Dashboard e gestione soci, protetti da proxy.ts
-  login/               Accesso amministratore (Supabase Auth)
-  auth/                Flussi di recupero password
-  actions/             Server Actions (soci, partite, sfide WhatsApp, PIN)
+  admin/               Dashboard e gestione soci, protette a admin-soci
+  login/               Accesso soci e amministratori (username + password)
+  auth/                Flussi di conferma/reset (non usati per la password)
+  actions/             Server Actions (soci, partite, sfide WhatsApp, account)
 components/
-  classifica/          Ranking, dialog sfida, wizard "aggiungi risultato"
+  classifica/          Ranking, sfida one-tap, wizard "aggiungi risultato"
   cronologia/           Tabella, filtri, ordinamento
   admin/               Nav, statistiche, form soci
   layout/              Sidebar desktop, bottom nav mobile

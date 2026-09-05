@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAdmin, getSessionUser } from "@/lib/auth";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Extra defense-in-depth on top of proxy.ts: even if a request somehow
- * reached this layout without going through the middleware, we still
- * refuse to render admin content without a valid Supabase Auth session.
+ * reached this layout without going through the middleware, we still refuse
+ * to render admin content unless the session belongs to an admin socio
+ * (`soci.is_admin`). Members are sent back to the public site.
  *
  * The session check reads cookies (a dynamic, per-request API), so it's
  * isolated in its own async component wrapped in `<Suspense>` - required by
@@ -26,16 +27,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 }
 
 async function AdminGate({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
+  const status = await getCurrentAdmin();
 
-  if (!data?.claims) {
-    redirect("/login?redirect=/admin");
+  if (!status.ok) {
+    const user = await getSessionUser();
+    // Logged in but not an admin (e.g. a member): back to the public site.
+    redirect(user ? "/" : "/login?redirect=/admin");
   }
+
+  const userName = `${status.socio.nome} ${status.socio.cognome}`.trim();
 
   return (
     <>
-      <AdminNav email={data.claims.email} />
+      <AdminNav userName={userName} />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         {children}
       </main>

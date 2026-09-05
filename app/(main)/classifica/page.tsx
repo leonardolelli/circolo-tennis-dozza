@@ -8,6 +8,7 @@ import { AddMatchDialog } from "@/components/classifica/add-match-dialog";
 import { ClassificaBrowser } from "@/components/classifica/classifica-browser";
 import { getRankedMembers } from "@/lib/data/members";
 import { getCategoryConfig } from "@/lib/data/site-settings";
+import { getCurrentSocioPublic } from "@/lib/auth";
 import { copy } from "@/lib/i18n";
 import { sanitizeSearchQuery } from "@/lib/validation";
 
@@ -58,7 +59,10 @@ export default function ClassificaPage({
 
 /** Depends on the same cached member list as the ranking below - see getRankedMembers. */
 async function ClassificaActions() {
-  const members = await getRankedMembers();
+  const [members, currentSocio] = await Promise.all([
+    getRankedMembers(),
+    getCurrentSocioPublic(),
+  ]);
   const activeMembers = members.filter((member) => !member.congelato);
   return (
     <div className="flex flex-wrap gap-2">
@@ -74,7 +78,9 @@ async function ClassificaActions() {
           {copy.classifica.actions.awards}
         </Link>
       </Button>
-      <AddMatchDialog players={activeMembers} />
+      {currentSocio && (
+        <AddMatchDialog players={activeMembers} currentSocio={currentSocio} />
+      )}
     </div>
   );
 }
@@ -86,9 +92,10 @@ async function ClassificaContent({
 }) {
   // Fetch the ranking once; filtering and pagination happen client-side in
   // ClassificaBrowser, so typing never triggers another DB query.
-  const [members, categoryConfig] = await Promise.all([
+  const [members, categoryConfig, currentSocio] = await Promise.all([
     getRankedMembers(),
     getCategoryConfig(),
+    getCurrentSocioPublic(),
   ]);
   const params = await searchParams;
   const initialQuery = sanitizeSearchQuery(params.q ?? "");
@@ -100,6 +107,7 @@ async function ClassificaContent({
       initialQuery={initialQuery}
       initialPage={initialPage}
       categoryConfig={categoryConfig}
+      currentSocio={currentSocio}
     />
   );
 }

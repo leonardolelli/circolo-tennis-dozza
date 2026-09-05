@@ -1,15 +1,24 @@
 import { z } from "zod";
 
-/** Every member PIN is exactly this many digits (per the admin creation form). */
-export const PIN_LENGTH = 8;
+/**
+ * Login username chosen by the manager for each member. Kept lowercase;
+ * allows letters, digits, dots, dashes and underscores (2-30 chars).
+ */
+export const USERNAME_PATTERN = /^[a-z0-9._-]{2,30}$/;
 
-const pinSchema = z
+const usernameSchema = z
   .string()
   .trim()
+  .toLowerCase()
   .regex(
-    new RegExp(`^\\d{${PIN_LENGTH}}$`),
-    `Il PIN deve avere esattamente ${PIN_LENGTH} cifre numeriche.`,
+    USERNAME_PATTERN,
+    "Lo username può contenere solo lettere minuscole, numeri, punti, trattini o underscore (2-30 caratteri).",
   );
+
+const passwordSchema = z
+  .string()
+  .min(8, "La password deve avere almeno 8 caratteri.")
+  .max(72, "La password è troppo lunga.");
 
 const phoneSchema = z
   .string()
@@ -37,7 +46,8 @@ export const addMemberSchema = z.object({
   cognome: nameSchema,
   telefono: phoneSchema,
   puntiIniziali: z.coerce.number().int().min(0).max(5000),
-  pin: pinSchema,
+  username: usernameSchema,
+  password: passwordSchema,
 });
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 
@@ -47,43 +57,23 @@ export const updateMemberSchema = z.object({
   cognome: nameSchema,
   telefono: phoneSchema,
   punti: z.coerce.number().int().min(0),
-  pin: z
-    .string()
-    .trim()
-    .optional()
-    .refine(
-      (value) => value === undefined || value.length === 0 || /^\d{8}$/.test(value),
-      `Il PIN deve avere esattamente ${PIN_LENGTH} cifre numeriche.`,
-    ),
+  username: usernameSchema,
+  password: passwordSchema.optional(),
 });
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 
-/** Input accepted by the `submitMatchResult` Server Action. */
-export const submitMatchSchema = z
-  .object({
-    inseritoreId: uuidSchema,
-    inseritorePin: pinSchema,
-    avversarioId: uuidSchema,
-    esito: z.enum(["win", "loss"]),
-    risultato: scoreSchema,
-  })
-  .refine((data) => data.inseritoreId !== data.avversarioId, {
-    message: "Non puoi selezionare te stesso come avversario.",
-    path: ["avversarioId"],
-  });
+/** Input accepted by the `submitMatchResult` Server Action. The inseritore is always the current session socio. */
+export const submitMatchSchema = z.object({
+  avversarioId: uuidSchema,
+  esito: z.enum(["win", "loss"]),
+  risultato: scoreSchema,
+});
 export type SubmitMatchInput = z.infer<typeof submitMatchSchema>;
 
-/** Input accepted by the `requestChallenge` Server Action. */
-export const challengeSchema = z
-  .object({
-    requesterId: uuidSchema,
-    requesterPin: pinSchema,
-    opponentId: uuidSchema,
-  })
-  .refine((data) => data.requesterId !== data.opponentId, {
-    message: "Seleziona un avversario diverso da te stesso.",
-    path: ["opponentId"],
-  });
+/** Input accepted by the `requestChallenge` Server Action. The requester is always the current session socio. */
+export const challengeSchema = z.object({
+  opponentId: uuidSchema,
+});
 export type ChallengeInput = z.infer<typeof challengeSchema>;
 
 export const adminMatchSchema = z

@@ -18,7 +18,7 @@ const ADMIN_NAV_ITEMS = [
   { href: "/admin/manutenzione", label: "Manutenzione", icon: Construction },
 ] as const;
 
-export function AdminNav({ email }: { email?: string }) {
+export function AdminNav({ userName }: { userName?: string }) {
   const pathname = usePathname();
 
   return (
@@ -63,9 +63,9 @@ export function AdminNav({ email }: { email?: string }) {
           </nav>
         </div>
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:self-end">
-          {email && (
+          {userName && (
             <span className="min-w-0 text-sm text-muted-foreground break-all sm:break-normal">
-              {email}
+              {userName}
             </span>
           )}
           <Link

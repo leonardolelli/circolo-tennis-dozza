@@ -7,17 +7,20 @@ import type { Database } from "@/lib/database.types";
  * Creates a Supabase client authenticated with the `service_role` secret
  * key, which bypasses Row Level Security entirely.
  *
- * ⚠️ SECURITY: only ever import this from Server Actions or Route Handlers,
- * never from a Client Component, and never forward its results to the
- * client without first filtering out sensitive columns (e.g. `soci.pin`).
- * The `server-only` import above makes it a build error to accidentally
- * bundle this module into client code.
+ * ⚠️ SECURITY: only ever import this from Server Actions, Route Handlers or
+ * Server Components - never from a Client Component, and never forward its
+ * results to the client without first filtering out sensitive columns (e.g.
+ * `soci.telefono`, `soci.username`, `soci.user_id`, `soci.is_admin`). The
+ * `server-only` import above makes it a build error to accidentally bundle
+ * this module into client code.
  *
  * Every caller MUST perform its own authorization check before using this
- * client for a write (see app/actions/*.ts):
- *   - Admin-only actions must confirm a valid Supabase Auth session first.
- *   - Member actions (recording a match, requesting a challenge) must
- *     verify the submitted PIN against `soci.pin` (bcrypt) first.
+ * client for a write (see lib/auth.ts and app/actions/*.ts):
+ *   - Admin-only actions must confirm the session belongs to an admin socio
+ *     (`soci.is_admin`).
+ *   - Member actions (recording a match, requesting a challenge) must confirm
+ *     the session is linked to a `soci` row (identity always comes from the
+ *     session via `soci.user_id`, never from client-supplied ids).
  */
 export function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/table";
 import { deleteMember, toggleMemberFrozen, updateMember } from "@/app/actions/members";
 import { formatDate, formatWinRate } from "@/lib/format";
-import { PIN_LENGTH } from "@/lib/validation";
 import { getCategory } from "@/lib/categories";
 import type { CategoryConfig } from "@/lib/categories";
 import type { ActionResult, SocioAdmin } from "@/lib/types";
@@ -220,17 +219,33 @@ function EditMemberDialog({
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminConfirmOpen, setAdminConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setIsAdmin(member?.is_admin ?? false);
+    } else {
       setErrorMessage(null);
+      setAdminConfirmOpen(false);
     }
-  }, [open]);
+  }, [open, member]);
+
+  function handleAdminCheckedChange(checked: boolean | "indeterminate") {
+    const next = checked === true;
+    if (next && !isAdmin) {
+      // Granting admin powers requires explicit confirmation.
+      setAdminConfirmOpen(true);
+    } else {
+      setIsAdmin(next);
+    }
+  }
 
   const handleSubmit = (formData: FormData) => {
     setErrorMessage(null);
 
     startTransition(async () => {
+      formData.set("isAdmin", isAdmin ? "on" : "off");
       const result = await updateMember(INITIAL_STATE, formData);
 
       if (!result.success) {
@@ -288,15 +303,40 @@ function EditMemberDialog({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-pin">PIN ({PIN_LENGTH} cifre)</Label>
+              <Label htmlFor="edit-username">Username</Label>
               <Input
-                id="edit-pin"
-                name="pin"
-                inputMode="numeric"
-                maxLength={PIN_LENGTH}
-                pattern="\d{8}"
-                placeholder="Lascia vuoto per non modificarlo"
+                id="edit-username"
+                name="username"
+                defaultValue={member.username}
+                required
+                autoCapitalize="none"
               />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-password">Password</Label>
+              <Input
+                id="edit-password"
+                name="password"
+                type="text"
+                autoComplete="off"
+                minLength={8}
+                defaultValue={member.password ?? ""}
+                placeholder="Minimo 8 caratteri"
+              />
+              <p className="text-xs text-muted-foreground">
+                Password attuale mostrata in chiaro: modificala e salva per
+                cambiarla.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="edit-isAdmin"
+                checked={isAdmin}
+                onCheckedChange={handleAdminCheckedChange}
+              />
+              <Label htmlFor="edit-isAdmin" className="cursor-pointer">
+                Amministratore (accesso all&apos;area di gestione)
+              </Label>
             </div>
             {errorMessage && (
               <p className="text-sm text-destructive">{errorMessage}</p>
@@ -309,6 +349,37 @@ function EditMemberDialog({
           </form>
         )}
       </DialogContent>
+
+      {member && (
+        <Dialog open={adminConfirmOpen} onOpenChange={setAdminConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Rendi amministratore</DialogTitle>
+              <DialogDescription>
+                {member.nome} {member.cognome} {} diventerà amministratore e potrà
+                accedere all&apos;area di gestione.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAdminConfirmOpen(false)}
+              >
+                Annulla
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsAdmin(true);
+                  setAdminConfirmOpen(false);
+                }}
+                className="bg-tennis text-tennis-foreground hover:bg-tennis/90"
+              >
+                Conferma
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }

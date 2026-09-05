@@ -53,7 +53,7 @@ export function PlayerCombobox({
   // If the typed text exactly matches a single player's full name
   // (either "Nome Cognome" or "Cognome Nome"), resolve it immediately.
   // This lets users type the full name instead of having to pick it from
-  // the dropdown, e.g. the challenge PIN flow on mobile.
+  // the dropdown, e.g. the one-tap challenge flow on mobile.
   useEffect(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery || value) return;

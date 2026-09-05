@@ -74,8 +74,9 @@ export function MembersCsvTools() {
           <DialogHeader>
             <DialogTitle>Importa giocatori da CSV</DialogTitle>
             <DialogDescription>
-              Carica un CSV esportato da questa pagina per ripristinare o aggiornare
-              la lista giocatori. I match non vengono importati.
+              Carica un CSV (es. quello scaricato da questa pagina) per creare
+              o aggiornare i giocatori. Se le colonne username e password sono
+              presenti, l&apos;import crea/aggiorna anche gli account di accesso.
             </DialogDescription>
           </DialogHeader>
           <form ref={formRef} action={handleSubmit} className="flex flex-col gap-4">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
+import { requireAdmin } from "@/lib/auth";
 
 function escapeCsvCell(value: string | number | boolean | null): string {
   if (value === null) return "";
@@ -11,21 +11,16 @@ function escapeCsvCell(value: string | number | boolean | null): string {
 }
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-
-  if (!claims?.claims) {
-    return NextResponse.json(
-      { error: "Devi accedere come amministratore." },
-      { status: 401 },
-    );
+  const admin = await requireAdmin();
+  if (!admin.success) {
+    return NextResponse.json({ error: admin.error }, { status: 401 });
   }
 
   const serviceClient = createServiceRoleClient();
   const { data, error } = await serviceClient
     .from("soci")
     .select(
-      "id, nome, cognome, telefono, punti_iniziali, punti, pin, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
+      "id, nome, cognome, telefono, punti_iniziali, punti, username, password, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
     )
     .order("cognome", { ascending: true })
     .order("nome", { ascending: true });
@@ -45,7 +40,8 @@ export async function GET() {
     "telefono",
     "punti_iniziali",
     "punti",
-    "pin_hash",
+    "username",
+    "password",
     "vittorie",
     "sconfitte",
     "congelato",
@@ -64,7 +60,8 @@ export async function GET() {
         member.telefono,
         member.punti_iniziali,
         member.punti,
-        member.pin,
+        member.username,
+        member.password,
         member.vittorie,
         member.sconfitte,
         member.congelato,

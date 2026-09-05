@@ -18,7 +18,7 @@ export default function LoginPage() {
           </span>
           <h1 className="text-xl font-semibold">{CLUB_NAME}</h1>
           <p className="text-sm text-sidebar-foreground/60">
-            Area riservata amministratori
+            Accedi come socio del circolo
           </p>
         </div>
         <Suspense>

@@ -26,11 +26,14 @@ export function ClassificaBrowser({
   initialQuery,
   initialPage,
   categoryConfig,
+  currentSocio,
 }: {
   members: SocioPublic[];
   initialQuery: string;
   initialPage: number;
   categoryConfig: CategoryConfig;
+  /** The logged-in socio viewing the list (drives the one-tap challenge). */
+  currentSocio: SocioPublic | null;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -108,9 +111,9 @@ export function ClassificaBrowser({
 
       <RankingList
         members={visibleMembers}
-        players={members}
         ranks={rankByMemberId}
         categoryConfig={categoryConfig}
+        currentSocio={currentSocio}
       />
 
       <ClientPagination

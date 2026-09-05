@@ -27,7 +27,10 @@ export interface Database {
           telefono: string;
           punti_iniziali: number;
           punti: number;
-          pin: string;
+          username: string | null;
+          user_id: string | null;
+          is_admin: boolean;
+          password: string | null;
           vittorie: number;
           sconfitte: number;
           congelato: boolean;
@@ -41,7 +44,10 @@ export interface Database {
           telefono: string;
           punti_iniziali?: number;
           punti?: number;
-          pin: string;
+          username: string;
+          user_id?: string | null;
+          is_admin?: boolean;
+          password?: string | null;
           vittorie?: number;
           sconfitte?: number;
           congelato?: boolean;
@@ -55,7 +61,10 @@ export interface Database {
           telefono?: string;
           punti_iniziali?: number;
           punti?: number;
-          pin?: string;
+          username?: string | null;
+          user_id?: string | null;
+          is_admin?: boolean;
+          password?: string | null;
           vittorie?: number;
           sconfitte?: number;
           congelato?: boolean;

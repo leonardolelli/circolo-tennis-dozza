@@ -18,18 +18,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlayerCombobox } from "@/components/shared/player-combobox";
-import { verifyPlayerPin } from "@/app/actions/pin";
 import { submitMatchResult } from "@/app/actions/matches";
-import { PIN_LENGTH } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import type { MatchOutcome, SocioPublic } from "@/lib/types";
 
-type WizardStep = 1 | 2 | 3;
+type WizardStep = 1 | 2;
 
 interface WizardState {
   step: WizardStep;
-  submitter: SocioPublic | null;
-  pin: string;
   opponent: SocioPublic | null;
   outcome: MatchOutcome | null;
   score: string;
@@ -38,8 +34,6 @@ interface WizardState {
 
 const INITIAL_STATE: WizardState = {
   step: 1,
-  submitter: null,
-  pin: "",
   opponent: null,
   outcome: null,
   score: "",
@@ -47,13 +41,20 @@ const INITIAL_STATE: WizardState = {
 };
 
 /**
- * 3-step "add match" wizard, rendered inside a modal (bottom sheet on
- * mobile) as suggested by the product spec, instead of a dedicated route:
- *   1. identify the submitting player (name + PIN),
- *   2. pick the opponent (type-ahead search),
- *   3. pick win/loss and type the set score.
+ * "Add match" wizard rendered inside a modal (bottom sheet on mobile):
+ *   1. pick the opponent (type-ahead search),
+ *   2. pick win/loss and type the set score.
+ * The submitting player is always the logged-in socio (`currentSocio`): no
+ * self-identification or PIN is needed anymore (identity comes from the
+ * session server-side).
  */
-export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
+export function AddMatchDialog({
+  players,
+  currentSocio,
+}: {
+  players: SocioPublic[];
+  currentSocio: SocioPublic;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -64,29 +65,11 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
     if (!nextOpen) setState(INITIAL_STATE);
   }
 
-  function handleStepOneSubmit() {
-    if (!state.submitter) return;
-    setState((s) => ({ ...s, error: null }));
-    startTransition(async () => {
-      const result = await verifyPlayerPin({
-        playerId: state.submitter!.id,
-        pin: state.pin,
-      });
-      if (!result.success) {
-        setState((s) => ({ ...s, error: result.error }));
-        return;
-      }
-      setState((s) => ({ ...s, step: 2 }));
-    });
-  }
-
-  function handleFinalSubmit() {
-    if (!state.submitter || !state.opponent || !state.outcome) return;
+  function handleSubmit() {
+    if (!state.opponent || !state.outcome) return;
     setState((s) => ({ ...s, error: null }));
     startTransition(async () => {
       const result = await submitMatchResult({
-        inseritoreId: state.submitter!.id,
-        inseritorePin: state.pin,
         avversarioId: state.opponent!.id,
         esito: state.outcome!,
         risultato: state.score,
@@ -101,6 +84,8 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
     });
   }
 
+  const fullName = `${currentSocio.nome} ${currentSocio.cognome}`.trim();
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -113,85 +98,35 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
         <DialogHeader>
           <DialogTitle>Aggiungi risultato</DialogTitle>
           <DialogDescription>
-            {state.step === 1 && "Identificati con il tuo nome e il tuo PIN."}
-            {state.step === 2 && "Cerca il tuo avversario tra i giocatori."}
-            {state.step === 3 && "Indica l'esito e il punteggio dei set."}
+            {state.step === 1
+              ? `Registra la partita a nome di ${fullName}.`
+              : "Indica l'esito e il punteggio dei set."}
           </DialogDescription>
         </DialogHeader>
 
         {state.step === 1 && (
           <div className="flex flex-col gap-4">
-            <PlayerCombobox
-              label="Il tuo nome"
-              players={players}
-              value={state.submitter}
-              onChange={(player) =>
-                setState((s) => ({ ...s, submitter: player }))
-              }
-            />
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="submitter-pin">
-                Il tuo PIN ({PIN_LENGTH} cifre)
-              </Label>
-              <Input
-                id="submitter-pin"
-                inputMode="numeric"
-                maxLength={PIN_LENGTH}
-                value={state.pin}
-                onChange={(event) =>
-                  setState((s) => ({
-                    ...s,
-                    pin: event.target.value.replace(/\D/g, ""),
-                  }))
-                }
-              />
-            </div>
-            {state.error && (
-              <p className="text-sm text-destructive">{state.error}</p>
-            )}
-            <DialogFooter>
-              <Button
-                disabled={
-                  !state.submitter ||
-                  state.pin.length !== PIN_LENGTH ||
-                  isPending
-                }
-                onClick={handleStepOneSubmit}
-              >
-                {isPending ? "Verifica in corso..." : "Continua"}
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
-
-        {state.step === 2 && (
-          <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
               Ciao{" "}
-              <span className="font-medium text-foreground">
-                {state.submitter?.nome}
-              </span>
-              , contro chi hai giocato?
+              <span className="font-medium text-foreground">{fullName}</span>,
+              contro chi hai giocato?
             </p>
             <PlayerCombobox
               label="Cerca avversario"
               players={players}
-              excludeId={state.submitter?.id}
+              excludeId={currentSocio.id}
               value={state.opponent}
               onChange={(player) =>
                 setState((s) => ({ ...s, opponent: player }))
               }
             />
+            {state.error && (
+              <p className="text-sm text-destructive">{state.error}</p>
+            )}
             <DialogFooter>
               <Button
-                variant="outline"
-                onClick={() => setState((s) => ({ ...s, step: 1 }))}
-              >
-                Indietro
-              </Button>
-              <Button
                 disabled={!state.opponent}
-                onClick={() => setState((s) => ({ ...s, step: 3 }))}
+                onClick={() => setState((s) => ({ ...s, step: 2 }))}
               >
                 Continua
               </Button>
@@ -199,16 +134,14 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
           </div>
         )}
 
-        {state.step === 3 && (
+        {state.step === 2 && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Esito della partita</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setState((s) => ({ ...s, outcome: "win" }))
-                  }
+                  onClick={() => setState((s) => ({ ...s, outcome: "win" }))}
                   className={cn(
                     "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
                     state.outcome === "win"
@@ -220,9 +153,7 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    setState((s) => ({ ...s, outcome: "loss" }))
-                  }
+                  onClick={() => setState((s) => ({ ...s, outcome: "loss" }))}
                   className={cn(
                     "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
                     state.outcome === "loss"
@@ -251,13 +182,13 @@ export function AddMatchDialog({ players }: { players: SocioPublic[] }) {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setState((s) => ({ ...s, step: 2 }))}
+                onClick={() => setState((s) => ({ ...s, step: 1 }))}
               >
                 Indietro
               </Button>
               <Button
                 disabled={!state.outcome || !state.score.trim() || isPending}
-                onClick={handleFinalSubmit}
+                onClick={handleSubmit}
                 className="bg-tennis text-tennis-foreground hover:bg-tennis/90"
               >
                 {isPending ? "Invio in corso..." : "Registra risultato"}

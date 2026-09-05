@@ -47,13 +47,18 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Only /admin is gated: Home, Classifica and Cronologia are public pages
-  // for club members (no Supabase Auth session involved - they identify
-  // themselves per-action with their PIN instead, see app/actions/*.ts).
-  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
+  // The member area (/classifica and its subpages cronologia/premi) and the
+  // admin area (/admin) require a Supabase Auth session. Home and the legal
+  // pages stay public. On redirect we remember where the user was headed so
+  // the login page can send them back.
+  const { pathname } = request.nextUrl;
+  const requiresAuth =
+    pathname.startsWith("/classifica") || pathname.startsWith("/admin");
+
+  if (requiresAuth && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", request.nextUrl.pathname);
+    url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 

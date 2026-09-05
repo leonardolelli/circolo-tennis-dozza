@@ -1,17 +1,19 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { calculateEloDelta } from "@/lib/elo";
 import { getEloParams } from "@/lib/data/site-settings";
-import { addMemberSchema, updateMemberSchema } from "@/lib/validation";
+import {
+  addMemberSchema,
+  updateMemberSchema,
+  USERNAME_PATTERN,
+} from "@/lib/validation";
+import { authEmailForUsername } from "@/lib/constants";
+import { requireAdmin } from "@/lib/auth";
 import type { Database } from "@/lib/database.types";
 import type { ActionResult } from "@/lib/types";
 
-/** Bcrypt cost factor for hashing member PINs. */
-const BCRYPT_SALT_ROUNDS = 12;
 const CSV_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 interface MemberCsvRow {
@@ -19,10 +21,10 @@ interface MemberCsvRow {
   nome: string;
   cognome: string;
   telefono: string;
+  username: string;
+  password: string;
   punti_iniziali?: string;
   punti?: string;
-  pin?: string;
-  pin_hash?: string;
   vittorie?: string;
   sconfitte?: string;
   congelato?: string;
@@ -32,15 +34,148 @@ interface MemberCsvRow {
 
 type SocioInsert = Database["public"]["Tables"]["soci"]["Insert"];
 
-async function assertAdmin() {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
+/** Admin-only guard (session + soci.is_admin) used by every mutating action. */
+const assertAdmin = requireAdmin;
 
-  if (!claims?.claims) {
-    return { success: false as const, error: "Devi accedere come amministratore." };
+/**
+ * Derives the login username from `nome.cognome` (lowercase, sanitized): e.g.
+ * "Mario Rossi" -> "mario.rossi", "Danilo Di Tullio" -> "danilo.ditullio".
+ */
+function deriveUsername(nome: string, cognome: string): string {
+  const raw = `${nome}.${cognome}`.toLowerCase();
+  const cleaned = raw.replace(/[^a-z0-9._-]+/g, "");
+  return cleaned.replace(/^[._-]+|[._-]+$/g, "");
+}
+
+/**
+ * Ensures a Supabase Auth account exists for a member: creates it when there
+ * is no linked `user_id`, otherwise updates its password. The auth email is
+ * derived from the username (`<username>@<AUTH_EMAIL_DOMAIN>`). Supabase
+ * hashes the password internally; the reversible copy the manager needs lives
+ * in `soci.password` (plaintext, by request).
+ */
+async function ensureAuthAccount({
+  serviceClient,
+  existingUserId,
+  username,
+  password,
+}: {
+  serviceClient: ReturnType<typeof createServiceRoleClient>;
+  existingUserId: string | null;
+  username: string;
+  password: string;
+}): Promise<{ userId: string | null; error?: string }> {
+  if (existingUserId) {
+    const { error } = await serviceClient.auth.admin.updateUserById(
+      existingUserId,
+      { password },
+    );
+
+    if (error) {
+      return {
+        userId: null,
+        error: `Account non aggiornato (${username}): ${error.message}`,
+      };
+    }
+    return { userId: existingUserId };
   }
 
-  return { success: true as const };
+  const { data, error } = await serviceClient.auth.admin.createUser({
+    email: authEmailForUsername(username),
+    password,
+    email_confirm: true,
+  });
+
+  if (error || !data?.user) {
+    const duplicate =
+      /already (been )?registered|user already exists|email_exists|user_exists/i.test(
+        error?.message ?? "",
+      );
+    return {
+      userId: null,
+      error: duplicate
+        ? `Esiste già un account con lo username ${username}.`
+        : `Account non creato (${username}): ${error?.message ?? "errore sconosciuto"}`,
+    };
+  }
+
+  return { userId: data.user.id };
+}
+
+/**
+ * Creates a NEW Supabase Auth account for a different username (the derived
+ * auth email changes with the username). When the socio already has an
+ * account, the caller must delete the old auth user only AFTER the `soci` row
+ * has been updated to point to the new user id. Password is required whenever
+ * an account is (re)created.
+ */
+async function replaceAuthAccount({
+  serviceClient,
+  currentUserId,
+  currentUsername,
+  newUsername,
+  password,
+}: {
+  serviceClient: ReturnType<typeof createServiceRoleClient>;
+  currentUserId: string | null;
+  currentUsername: string | null;
+  newUsername: string;
+  password: string;
+}): Promise<{ userId: string | null; error?: string }> {
+  const email = authEmailForUsername(newUsername);
+
+  if (!currentUserId) {
+    if (!password) {
+      return { userId: null };
+    }
+    const { data, error } = await serviceClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (error || !data?.user) {
+      const duplicate =
+        /already (been )?registered|user already exists|email_exists|user_exists/i.test(
+          error?.message ?? "",
+        );
+      return {
+        userId: null,
+        error: duplicate
+          ? `Esiste già un account con lo username ${newUsername}.`
+          : `Account non creato (${newUsername}): ${error?.message ?? "errore sconosciuto"}`,
+      };
+    }
+    return { userId: data.user.id };
+  }
+
+  if (!password) {
+    return {
+      userId: null,
+      error: `Per cambiare lo username di "${currentUsername}" in "${newUsername}" serve la password del socio (per ricreare l'account).`,
+    };
+  }
+
+  const { data, error } = await serviceClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (error || !data?.user) {
+    const duplicate =
+      /already (been )?registered|user already exists|email_exists|user_exists/i.test(
+        error?.message ?? "",
+      );
+    return {
+      userId: null,
+      error: duplicate
+        ? `Esiste già un account con lo username ${newUsername}.`
+        : `Account non creato (${newUsername}): ${error?.message ?? "errore sconosciuto"}`,
+    };
+  }
+
+  return { userId: data.user.id };
 }
 
 function normalizeFullName(value: string) {
@@ -127,16 +262,6 @@ function toOptionalIsoDate(value: string | undefined): string | null {
   return parsed.toISOString();
 }
 
-async function resolvePinHash(row: MemberCsvRow): Promise<string | null> {
-  if (row.pin_hash && row.pin_hash.length > 0) {
-    return row.pin_hash;
-  }
-  if (!row.pin || !/^\d{8}$/.test(row.pin)) {
-    return null;
-  }
-  return bcrypt.hash(row.pin, BCRYPT_SALT_ROUNDS);
-}
-
 function parseMembersCsv(csvText: string): {
   rows: MemberCsvRow[];
   error: string | null;
@@ -147,6 +272,8 @@ function parseMembersCsv(csvText: string): {
   }
 
   const headers = table[0].map((header) => header.trim().toLowerCase());
+  // `username`/`password` are optional: username defaults to nome.cognome and
+  // password is only needed to create/update the auth account.
   const requiredHeaders = ["nome", "cognome", "telefono"];
   const missing = requiredHeaders.filter((header) => !headers.includes(header));
 
@@ -170,10 +297,10 @@ function parseMembersCsv(csvText: string): {
       nome: obj.nome ?? "",
       cognome: obj.cognome ?? "",
       telefono: obj.telefono ?? "",
+      username: obj.username ?? "",
+      password: obj.password ?? "",
       punti_iniziali: obj.punti_iniziali || undefined,
       punti: obj.punti || undefined,
-      pin: obj.pin || undefined,
-      pin_hash: obj.pin_hash || undefined,
       vittorie: obj.vittorie || undefined,
       sconfitte: obj.sconfitte || undefined,
       congelato: obj.congelato || undefined,
@@ -400,7 +527,8 @@ export async function addMember(
     cognome: formData.get("cognome"),
     telefono: formData.get("telefono"),
     puntiIniziali: formData.get("puntiIniziali"),
-    pin: formData.get("pin"),
+    username: formData.get("username"),
+    password: formData.get("password"),
   });
 
   if (!parsed.success) {
@@ -410,24 +538,63 @@ export async function addMember(
     };
   }
 
-  const { nome, cognome, telefono, puntiIniziali, pin } = parsed.data;
-  const pinHash = await bcrypt.hash(pin, BCRYPT_SALT_ROUNDS);
+  const { nome, cognome, telefono, puntiIniziali, username, password } =
+    parsed.data;
+  const isAdmin = formData.get("isAdmin") === "on";
 
   const serviceClient = createServiceRoleClient();
+
+  // Create the linked Supabase Auth account first. The auth email is derived
+  // from the username (synthetic, never delivered), so account + socio stay
+  // consistent and the member can log in immediately with username+password.
+  const { data: createdUser, error: createUserError } =
+    await serviceClient.auth.admin.createUser({
+      email: authEmailForUsername(username),
+      password,
+      email_confirm: true,
+    });
+
+  if (createUserError || !createdUser?.user) {
+    console.error(
+      "addMember createUser failed:",
+      createUserError?.message ?? "no user returned",
+    );
+    const duplicate = /already (been )?registered|user already exists|email_exists|user_exists/i.test(
+      createUserError?.message ?? "",
+    );
+    return {
+      success: false,
+      error: duplicate
+        ? "Esiste già un account con questo username."
+        : "Impossibile creare l'account del giocatore. Riprova.",
+    };
+  }
+
   const { error } = await serviceClient.from("soci").insert({
     nome,
     cognome,
     telefono,
     punti_iniziali: puntiIniziali,
     punti: puntiIniziali,
-    pin: pinHash,
+    username,
+    password,
+    user_id: createdUser.user.id,
+    is_admin: isAdmin,
   });
 
   if (error) {
     console.error("addMember failed:", error);
+    // Roll back the just-created auth user so a retry is not blocked by the
+    // (derived) email already being taken.
+    await serviceClient.auth.admin
+      .deleteUser(createdUser.user.id)
+      .catch(() => undefined);
+
     return {
       success: false,
-      error: "Impossibile aggiungere il giocatore. Riprova.",
+      error: /username/i.test(error.message ?? "")
+        ? "Esiste già un socio con questo username."
+        : "Impossibile aggiungere il giocatore. Riprova.",
     };
   }
 
@@ -444,13 +611,15 @@ export async function updateMember(
     return admin;
   }
 
+  const rawPassword = (formData.get("password") as string | null)?.trim() ?? "";
   const parsed = updateMemberSchema.safeParse({
     id: formData.get("id"),
     nome: formData.get("nome"),
     cognome: formData.get("cognome"),
     telefono: formData.get("telefono"),
     punti: formData.get("punti"),
-    pin: formData.get("pin"),
+    username: formData.get("username"),
+    password: rawPassword.length > 0 ? rawPassword : undefined,
   });
 
   if (!parsed.success) {
@@ -460,26 +629,126 @@ export async function updateMember(
     };
   }
 
-  const { id, nome, cognome, telefono, punti, pin } = parsed.data;
+  const { id, nome, cognome, telefono, punti, username, password } =
+    parsed.data;
   const serviceClient = createServiceRoleClient();
+
+  const { data: existing, error: existingError } = await serviceClient
+    .from("soci")
+    .select("id, username, user_id, password")
+    .eq("id", id)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: "Giocatore non trovato." };
+  }
+
+  let userId = existing.user_id;
+  const wantsPassword = typeof password === "string" && password.length > 0;
+  const usernameChanged = existing.username !== username;
+
+  // When the username of an account-linked socio changes we recreate the auth
+  // account under the new username and delete the OLD one only after the soci
+  // update succeeds.
+  let oldAuthUserId: string | null = null;
+  let createdNewAuthId: string | null = null;
+
+  if (usernameChanged && existing.user_id) {
+    const recreatePassword = wantsPassword
+      ? (password as string)
+      : (existing.password ?? "");
+    const replacement = await replaceAuthAccount({
+      serviceClient,
+      currentUserId: existing.user_id,
+      currentUsername: existing.username ?? username,
+      newUsername: username,
+      password: recreatePassword,
+    });
+
+    if (replacement.error) {
+      return { success: false, error: replacement.error };
+    }
+    if (replacement.userId) {
+      oldAuthUserId = existing.user_id;
+      createdNewAuthId = replacement.userId;
+      userId = replacement.userId;
+    }
+  } else if (!userId && wantsPassword) {
+    // The socio has no auth account yet (e.g. imported via CSV): create it now
+    // with the chosen password so the member can log in.
+    const { data: createdUser, error: createUserError } =
+      await serviceClient.auth.admin.createUser({
+        email: authEmailForUsername(username),
+        password,
+        email_confirm: true,
+      });
+
+    if (createUserError || !createdUser?.user) {
+      console.error(
+        "updateMember createUser failed:",
+        createUserError?.message ?? "no user returned",
+      );
+      const duplicate = /already (been )?registered|user already exists|email_exists|user_exists/i.test(
+        createUserError?.message ?? "",
+      );
+      return {
+        success: false,
+        error: duplicate
+          ? "Esiste già un account con questo username."
+          : "Impossibile creare l'account del giocatore. Riprova.",
+      };
+    }
+    userId = createdUser.user.id;
+    createdNewAuthId = userId;
+  } else if (userId && wantsPassword) {
+    // Existing account, unchanged username: reset the password.
+    const { error: updatePasswordError } =
+      await serviceClient.auth.admin.updateUserById(userId, {
+        password,
+      });
+
+    if (updatePasswordError) {
+      console.error(
+        "updateMember update password failed:",
+        updatePasswordError.message,
+      );
+      return {
+        success: false,
+        error: "Impossibile aggiornare la password. Riprova.",
+      };
+    }
+  }
 
   const updatePayload: {
     nome: string;
     cognome: string;
     telefono: string;
     punti: number;
-    punti_iniziali?: number;
-    pin?: string;
+    punti_iniziali: number;
+    username: string;
+    user_id?: string | null;
+    is_admin?: boolean;
+    password?: string | null;
   } = {
     nome,
     cognome,
     telefono,
     punti,
     punti_iniziali: punti,
+    username,
   };
 
-  if (pin && pin.length > 0) {
-    updatePayload.pin = await bcrypt.hash(pin, BCRYPT_SALT_ROUNDS);
+  if (userId) {
+    updatePayload.user_id = userId;
+  }
+
+  const isAdmin = formData.get("isAdmin") === "on";
+  updatePayload.is_admin = isAdmin;
+
+  // Keep the reversible (plaintext) copy of the password in sync: it is what
+  // the CSV export shows to the manager.
+  if (wantsPassword) {
+    updatePayload.password = password;
   }
 
   const { error } = await serviceClient
@@ -489,10 +758,51 @@ export async function updateMember(
 
   if (error) {
     console.error("updateMember failed:", error);
+    // Roll back the auth account created for this update.
+    if (createdNewAuthId) {
+      await serviceClient.auth.admin
+        .deleteUser(createdNewAuthId)
+        .catch(() => undefined);
+    }
     return {
       success: false,
-      error: "Impossibile aggiornare il giocatore. Riprova.",
+      error: /username/i.test(error.message ?? "")
+        ? "Esiste già un socio con questo username."
+        : "Impossibile aggiornare il giocatore. Riprova.",
     };
+  }
+
+  // The socio now points to the new account (username changed): remove the
+  // OLD auth user.
+  if (oldAuthUserId && createdNewAuthId) {
+    const { error: deleteOldError } =
+      await serviceClient.auth.admin.deleteUser(oldAuthUserId);
+
+    if (deleteOldError) {
+      console.error(
+        "updateMember delete old auth failed:",
+        deleteOldError.message,
+      );
+      // Roll back: drop the new account and restore the previous link.
+      await serviceClient.auth.admin
+        .deleteUser(createdNewAuthId)
+        .catch(() => undefined);
+      const { error: revertError } = await serviceClient
+        .from("soci")
+        .update({
+          user_id: oldAuthUserId,
+          username: existing.username ?? username,
+        })
+        .eq("id", id);
+      if (revertError) {
+        console.error("updateMember rollback failed:", revertError.message);
+      }
+      return {
+        success: false,
+        error:
+          "Impossibile sostituire il vecchio account del giocatore. Riprova.",
+      };
+    }
   }
 
   const { error: matchNamesError } = await serviceClient
@@ -548,8 +858,9 @@ export async function importMembersCsv(
     return { success: false, error: parsedCsv.error };
   }
 
-  const rowsWithId: SocioInsert[] = [];
-  const rowsWithoutId: SocioInsert[] = [];
+  const serviceClient = createServiceRoleClient();
+  const seenUsernames = new Set<string>();
+  let imported = 0;
 
   for (const row of parsedCsv.rows) {
     const nome = row.nome.trim();
@@ -563,21 +874,109 @@ export async function importMembersCsv(
       };
     }
 
-    const pinHash = await resolvePinHash(row);
-    if (!pinHash) {
+    const explicitUsername = (row.username ?? "").trim().toLowerCase();
+    const username = explicitUsername || deriveUsername(nome, cognome);
+
+    if (!USERNAME_PATTERN.test(username)) {
       return {
         success: false,
-        error: "Ogni riga deve includere pin_hash oppure un PIN numerico a 8 cifre.",
+        error: `Username non valido per ${nome} ${cognome}: "${username}". Usa solo minuscole, numeri, punti, trattini o underscore (2-30 caratteri).`,
       };
+    }
+
+    if (seenUsernames.has(username)) {
+      return {
+        success: false,
+        error: `Due righe hanno lo stesso username "${username}" (${nome} ${cognome}).`,
+      };
+    }
+    seenUsernames.add(username);
+
+    const password = (row.password ?? "").trim();
+    if (password.length > 0 && password.length < 8) {
+      return {
+        success: false,
+        error: `La password di ${nome} ${cognome} deve avere almeno 8 caratteri.`,
+      };
+    }
+
+    const { data: existing, error: existingError } = row.id
+      ? await serviceClient
+          .from("soci")
+          .select("id, username, user_id, password")
+          .eq("id", row.id)
+          .maybeSingle()
+      : await serviceClient
+          .from("soci")
+          .select("id, username, user_id, password")
+          .eq("username", username)
+          .maybeSingle();
+
+    if (existingError) {
+      console.error("importMembersCsv lookup failed:", existingError);
+      return {
+        success: false,
+        error:
+          "Import CSV non riuscito durante la verifica dei giocatori.",
+      };
+    }
+
+    // Changing the username of a socio whose account is already linked is
+    // allowed: the account is recreated under the new username and the OLD one
+    // is deleted after the socio write succeeds.
+    let account: { userId: string | null; error?: string };
+    let oldAuthUserId: string | null = null;
+    let createdNewAuthId: string | null = null;
+
+    const usernameChanged =
+      Boolean(existing?.user_id) &&
+      Boolean(existing?.username) &&
+      existing!.username !== username;
+
+    if (usernameChanged) {
+      const recreatePassword =
+        password.length > 0 ? password : (existing?.password ?? "");
+      const replacement = await replaceAuthAccount({
+        serviceClient,
+        currentUserId: existing!.user_id,
+        currentUsername: existing!.username ?? username,
+        newUsername: username,
+        password: recreatePassword,
+      });
+
+      if (replacement.error) {
+        return { success: false, error: replacement.error };
+      }
+      account = { userId: replacement.userId };
+      if (replacement.userId) {
+        oldAuthUserId = existing!.user_id;
+        createdNewAuthId = replacement.userId;
+      }
+    } else if (password.length > 0) {
+      account = await ensureAuthAccount({
+        serviceClient,
+        existingUserId: existing?.user_id ?? null,
+        username,
+        password,
+      });
+      if (account.userId && !existing?.user_id) {
+        createdNewAuthId = account.userId;
+      }
+    } else {
+      account = { userId: existing?.user_id ?? null };
+    }
+
+    if (account.error) {
+      return { success: false, error: account.error };
     }
 
     const payload: SocioInsert = {
       nome,
       cognome,
       telefono,
+      username,
       punti_iniziali: toOptionalInt(row.punti_iniziali) ?? 1000,
       punti: toOptionalInt(row.punti) ?? toOptionalInt(row.punti_iniziali) ?? 1000,
-      pin: pinHash,
       vittorie: toOptionalInt(row.vittorie) ?? 0,
       sconfitte: toOptionalInt(row.sconfitte) ?? 0,
       congelato: toOptionalBoolean(row.congelato) ?? false,
@@ -585,49 +984,96 @@ export async function importMembersCsv(
       created_at: toOptionalIsoDate(row.created_at) ?? undefined,
     };
 
-    if (row.id) {
-      payload.id = row.id;
-      rowsWithId.push(payload);
+    if (account.userId) {
+      payload.user_id = account.userId;
+    }
+    if (password.length > 0) {
+      payload.password = password;
+    }
+
+    const targetId = row.id ?? existing?.id;
+
+    if (targetId) {
+      payload.id = targetId;
+      const { error } = await serviceClient
+        .from("soci")
+        .upsert(payload, { onConflict: "id" });
+
+      if (error) {
+        console.error("importMembersCsv upsert failed:", error);
+        // Roll back the auth account created for this row.
+        if (createdNewAuthId) {
+          await serviceClient.auth.admin
+            .deleteUser(createdNewAuthId)
+            .catch(() => undefined);
+        }
+        return {
+          success: false,
+          error: `Import non riuscito per ${nome} ${cognome}: ${error.message}.`,
+        };
+      }
     } else {
-      delete payload.created_at;
-      rowsWithoutId.push(payload);
+      const { error: insertError } = await serviceClient
+        .from("soci")
+        .insert(payload);
+
+      if (insertError) {
+        console.error("importMembersCsv insert failed:", insertError);
+        // Roll back the auth account created for this row.
+        if (createdNewAuthId) {
+          await serviceClient.auth.admin
+            .deleteUser(createdNewAuthId)
+            .catch(() => undefined);
+        }
+        return {
+          success: false,
+          error: `Import non riuscito per ${nome} ${cognome}: ${insertError.message}.`,
+        };
+      }
     }
-  }
 
-  const serviceClient = createServiceRoleClient();
+    // Username of an account-linked socio changed: remove the OLD auth user
+    // now that the socio points to the new account.
+    if (oldAuthUserId && createdNewAuthId) {
+      const { error: deleteOldError } =
+        await serviceClient.auth.admin.deleteUser(oldAuthUserId);
 
-  if (rowsWithId.length > 0) {
-    const { error } = await serviceClient
-      .from("soci")
-      .upsert(rowsWithId, { onConflict: "id" });
-
-    if (error) {
-      console.error("importMembersCsv upsert failed:", error);
-      return {
-        success: false,
-        error: "Import CSV non riuscito durante l'aggiornamento dei giocatori.",
-      };
+      if (deleteOldError) {
+        console.error(
+          "importMembersCsv delete old auth failed:",
+          deleteOldError.message,
+        );
+        // Roll back: drop the new account and restore the previous link.
+        await serviceClient.auth.admin
+          .deleteUser(createdNewAuthId)
+          .catch(() => undefined);
+        const { error: revertError } = await serviceClient
+          .from("soci")
+          .update({
+            user_id: oldAuthUserId,
+            username: existing?.username ?? username,
+          })
+          .eq("id", targetId as string);
+        if (revertError) {
+          console.error(
+            "importMembersCsv rollback failed:",
+            revertError.message,
+          );
+        }
+        return {
+          success: false,
+          error: `Import non riuscito per ${nome} ${cognome}: impossibile sostituire il vecchio account.`,
+        };
+      }
     }
-  }
 
-  if (rowsWithoutId.length > 0) {
-    const { error } = await serviceClient.from("soci").insert(rowsWithoutId);
-
-    if (error) {
-      console.error("importMembersCsv insert failed:", error);
-      return {
-        success: false,
-        error: "Import CSV non riuscito durante l'inserimento dei giocatori.",
-      };
-    }
+    imported += 1;
   }
 
   revalidateMemberPaths();
   return {
     success: true,
-    data: {
-      imported: parsedCsv.rows.length,
-    },
+    data: { imported },
   };
 }
 
@@ -675,6 +1121,12 @@ export async function deleteMember(
   const serviceClient = createServiceRoleClient();
   const deleteMatches = options?.deleteMatches ?? false;
   const recalculateRanking = options?.recalculateRanking ?? true;
+
+  const { data: socioToDelete } = await serviceClient
+    .from("soci")
+    .select("user_id")
+    .eq("id", memberId)
+    .maybeSingle();
 
   const { data: impactedMatches, error: impactedMatchesError } = await serviceClient
     .from("partite")
@@ -726,6 +1178,13 @@ export async function deleteMember(
       success: false,
       error: "Impossibile eliminare il giocatore. Riprova.",
     };
+  }
+
+  // Best-effort cleanup of the linked Supabase Auth account.
+  if (socioToDelete?.user_id) {
+    await serviceClient.auth.admin
+      .deleteUser(socioToDelete.user_id)
+      .catch(() => undefined);
   }
 
   if (recalculateRanking) {
