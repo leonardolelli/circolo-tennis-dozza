@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -100,22 +99,14 @@ export function AddMatchDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Aggiungi risultato</DialogTitle>
-          <DialogDescription>
-            {state.step === 1
-              ? `Registra la partita a nome di ${fullName}.`
-              : "Indica chi ha vinto e con quale punteggio."}
-          </DialogDescription>
         </DialogHeader>
 
         {state.step === 1 && (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Ciao{" "}
-              <span className="font-medium text-foreground">{fullName}</span>,
-              contro chi hai giocato?
+            <p className="text-lg font-semibold tracking-tight">
+              Contro chi hai giocato?
             </p>
             <PlayerCombobox
-              label="Cerca avversario"
               players={players}
               excludeId={currentSocio.id}
               value={state.opponent}
@@ -128,8 +119,10 @@ export function AddMatchDialog({
             )}
             <DialogFooter>
               <Button
+                size="lg"
                 disabled={!state.opponent}
                 onClick={() => setState((s) => ({ ...s, step: 2 }))}
+                className="w-full bg-tennis text-tennis-foreground hover:bg-tennis/90 sm:w-auto"
               >
                 Continua
               </Button>
@@ -139,45 +132,43 @@ export function AddMatchDialog({
 
         {state.step === 2 && (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label>Chi ha vinto la partita?</Label>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setState((s) => ({ ...s, outcome: "win" }))}
-                  aria-pressed={state.outcome === "win"}
-                  className={cn(
-                    "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
-                    state.outcome === "win"
-                      ? "border-tennis bg-tennis/10 text-tennis"
-                      : "hover:bg-accent",
-                  )}
-                >
-                  {fullName}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setState((s) => ({ ...s, outcome: "loss" }))}
-                  aria-pressed={state.outcome === "loss"}
-                  className={cn(
-                    "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
-                    state.outcome === "loss"
-                      ? "border-tennis bg-tennis/10 text-tennis"
-                      : "hover:bg-accent",
-                  )}
-                >
-                  {opponentName}
-                </button>
-              </div>
+            <p className="text-lg font-semibold tracking-tight">
+              Chi ha vinto la partita?
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setState((s) => ({ ...s, outcome: "win" }))}
+                aria-pressed={state.outcome === "win"}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
+                  state.outcome === "win"
+                    ? "border-tennis bg-tennis/10 text-tennis"
+                    : "hover:bg-accent",
+                )}
+              >
+                {fullName}
+              </button>
+              <button
+                type="button"
+                onClick={() => setState((s) => ({ ...s, outcome: "loss" }))}
+                aria-pressed={state.outcome === "loss"}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
+                  state.outcome === "loss"
+                    ? "border-tennis bg-tennis/10 text-tennis"
+                    : "hover:bg-accent",
+                )}
+              >
+                {opponentName}
+              </button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="score">
-                Punteggio di chi ha vinto (es. 8-2 o 6-4 6-2)
-              </Label>
+              <Label htmlFor="score">Punteggio di chi ha vinto</Label>
               <Input
                 id="score"
                 value={state.score}
-                placeholder="es. 8-2 oppure 6-4 6-2"
+                placeholder="es. 8-2 o 6-4 6-2"
                 onChange={(event) =>
                   setState((s) => ({ ...s, score: event.target.value }))
                 }

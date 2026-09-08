@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -101,10 +100,6 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Aggiungi match</DialogTitle>
-          <DialogDescription>
-            Registra un risultato come amministratore, con attribuzione ai
-            giocatori selezionati.
-          </DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="flex flex-col gap-4">
@@ -135,9 +130,11 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
             />
           </div>
 
-          {playerOne && playerTwo ? (
+          {playerOne && playerTwo && (
             <div className="flex flex-col gap-1.5">
-              <Label>Chi ha vinto la partita?</Label>
+              <p className="text-lg font-semibold tracking-tight">
+                Chi ha vinto la partita?
+              </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
@@ -167,23 +164,16 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
                 </button>
               </div>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Seleziona Giocatore 1 e Giocatore 2: appariranno i pulsanti per
-              scegliere chi ha vinto la partita.
-            </p>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-match-score">
-                Punteggio di chi ha vinto (es. 8-2 o 6-4 6-2)
-              </Label>
+              <Label htmlFor="admin-match-score">Punteggio di chi ha vinto</Label>
               <Input
                 id="admin-match-score"
                 name="risultato"
                 value={score}
-                placeholder="es. 8-2 oppure 6-4 6-2"
+                placeholder="es. 8-2 o 6-4 6-2"
                 onChange={(event) => setScore(event.target.value)}
                 required
               />
