@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import type { ActionResult, MatchOutcome, SocioPublic } from "@/lib/types";
 
 const INITIAL_STATE: ActionResult | null = null;
@@ -38,18 +39,20 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [submitter, setSubmitter] = useState<SocioPublic | null>(null);
-  const [opponent, setOpponent] = useState<SocioPublic | null>(null);
-  const [outcome, setOutcome] = useState<MatchOutcome>("win");
+  const [playerOne, setPlayerOne] = useState<SocioPublic | null>(null);
+  const [playerTwo, setPlayerTwo] = useState<SocioPublic | null>(null);
+  // Winner is chosen by tapping a player name (like the member dialog):
+  // "win" = playerOne won, "loss" = playerTwo won (relative to playerOne).
+  const [outcome, setOutcome] = useState<MatchOutcome | null>(null);
   const [score, setScore] = useState("");
   const [dateValue, setDateValue] = useState("");
 
   useEffect(() => {
     if (!open) {
       setErrorMessage(null);
-      setSubmitter(null);
-      setOpponent(null);
-      setOutcome("win");
+      setPlayerOne(null);
+      setPlayerTwo(null);
+      setOutcome(null);
       setScore("");
       setDateValue("");
       return;
@@ -59,8 +62,15 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
   }, [open]);
 
   const canSubmit = useMemo(() => {
-    return submitter && opponent && submitter.id !== opponent.id && score.trim() && dateValue;
-  }, [dateValue, opponent, score, submitter]);
+    return (
+      !!playerOne &&
+      !!playerTwo &&
+      playerOne.id !== playerTwo.id &&
+      !!outcome &&
+      !!score.trim() &&
+      !!dateValue
+    );
+  }, [dateValue, outcome, playerOne, playerTwo, score]);
 
   const handleSubmit = (formData: FormData) => {
     setErrorMessage(null);
@@ -98,52 +108,82 @@ export function AdminAddMatchDialog({ players }: { players: SocioPublic[] }) {
         </DialogHeader>
 
         <form action={handleSubmit} className="flex flex-col gap-4">
-          <input type="hidden" name="inseritoreId" value={submitter?.id ?? ""} />
-          <input type="hidden" name="avversarioId" value={opponent?.id ?? ""} />
-          <input type="hidden" name="esito" value={outcome} />
+          <input type="hidden" name="inseritoreId" value={playerOne?.id ?? ""} />
+          <input type="hidden" name="avversarioId" value={playerTwo?.id ?? ""} />
+          <input type="hidden" name="esito" value={outcome ?? ""} />
           <input type="hidden" name="data" value={dateValue ? toUtcIsoValue(dateValue) : ""} />
 
-          <PlayerCombobox
-            label="Giocatore che ha inserito il risultato"
-            players={players}
-            value={submitter}
-            onChange={setSubmitter}
-          />
-          <PlayerCombobox
-            label="Avversario"
-            players={players}
-            value={opponent}
-            excludeId={submitter?.id}
-            onChange={setOpponent}
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <Label>Esito per il giocatore inseritore</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant={outcome === "win" ? "default" : "outline"}
-                onClick={() => setOutcome("win")}
-              >
-                Ha vinto
-              </Button>
-              <Button
-                type="button"
-                variant={outcome === "loss" ? "default" : "outline"}
-                onClick={() => setOutcome("loss")}
-              >
-                Ha perso
-              </Button>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PlayerCombobox
+              label="Giocatore 1"
+              players={players}
+              value={playerOne}
+              onChange={(player) => {
+                setPlayerOne(player);
+                setOutcome(null);
+              }}
+            />
+            <PlayerCombobox
+              label="Giocatore 2"
+              players={players}
+              value={playerTwo}
+              excludeId={playerOne?.id}
+              onChange={(player) => {
+                setPlayerTwo(player);
+                setOutcome(null);
+              }}
+            />
           </div>
+
+          {playerOne && playerTwo ? (
+            <div className="flex flex-col gap-1.5">
+              <Label>Chi ha vinto la partita?</Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setOutcome("win")}
+                  aria-pressed={outcome === "win"}
+                  className={cn(
+                    "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
+                    outcome === "win"
+                      ? "border-tennis bg-tennis/10 text-tennis"
+                      : "hover:bg-accent",
+                  )}
+                >
+                  {playerOne.nome} {playerOne.cognome}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutcome("loss")}
+                  aria-pressed={outcome === "loss"}
+                  className={cn(
+                    "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
+                    outcome === "loss"
+                      ? "border-tennis bg-tennis/10 text-tennis"
+                      : "hover:bg-accent",
+                  )}
+                >
+                  {playerTwo.nome} {playerTwo.cognome}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Seleziona Giocatore 1 e Giocatore 2: appariranno i pulsanti per
+              scegliere chi ha vinto la partita.
+            </p>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-match-score">Punteggio</Label>
+              <Label htmlFor="admin-match-score">
+                Punteggio di chi ha vinto (es. 8-2 o 6-4 6-2)
+              </Label>
               <Input
                 id="admin-match-score"
                 name="risultato"
                 value={score}
+                placeholder="es. 8-2 oppure 6-4 6-2"
                 onChange={(event) => setScore(event.target.value)}
                 required
               />

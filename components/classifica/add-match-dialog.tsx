@@ -85,6 +85,9 @@ export function AddMatchDialog({
   }
 
   const fullName = `${currentSocio.nome} ${currentSocio.cognome}`.trim();
+  const opponentName = state.opponent
+    ? `${state.opponent.nome} ${state.opponent.cognome}`.trim()
+    : "";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -100,7 +103,7 @@ export function AddMatchDialog({
           <DialogDescription>
             {state.step === 1
               ? `Registra la partita a nome di ${fullName}.`
-              : "Indica l'esito e il punteggio dei set."}
+              : "Indica chi ha vinto e con quale punteggio."}
           </DialogDescription>
         </DialogHeader>
 
@@ -137,11 +140,12 @@ export function AddMatchDialog({
         {state.step === 2 && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label>Esito della partita</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <Label>Chi ha vinto la partita?</Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => setState((s) => ({ ...s, outcome: "win" }))}
+                  aria-pressed={state.outcome === "win"}
                   className={cn(
                     "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
                     state.outcome === "win"
@@ -149,28 +153,31 @@ export function AddMatchDialog({
                       : "hover:bg-accent",
                   )}
                 >
-                  Ho vinto
+                  {fullName}
                 </button>
                 <button
                   type="button"
                   onClick={() => setState((s) => ({ ...s, outcome: "loss" }))}
+                  aria-pressed={state.outcome === "loss"}
                   className={cn(
                     "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
                     state.outcome === "loss"
-                      ? "border-destructive bg-destructive/10 text-destructive"
+                      ? "border-tennis bg-tennis/10 text-tennis"
                       : "hover:bg-accent",
                   )}
                 >
-                  Ho perso
+                  {opponentName}
                 </button>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="score">Punteggio set (es. 6-4 6-2)</Label>
+              <Label htmlFor="score">
+                Punteggio di chi ha vinto (es. 8-2 o 6-4 6-2)
+              </Label>
               <Input
                 id="score"
                 value={state.score}
-                placeholder="6-4 6-2"
+                placeholder="es. 8-2 oppure 6-4 6-2"
                 onChange={(event) =>
                   setState((s) => ({ ...s, score: event.target.value }))
                 }

@@ -158,7 +158,7 @@ export function evaluateChallengeRule(input: {
         : "L'avversario selezionato";
     return {
       allowed: false,
-      reason: `Puoi sfidare chi è al massimo ${maxRankDelta} posizioni sopra di te in classifica (categoria ${getCategoryLabel(category)}), ma ${opponentName} è a ${positionsAbove} posizioni sopra di te.`,
+      reason: `Puoi sfidare chi è al massimo ${maxRankDelta} posizioni sopra di te in classifica (categoria ${getCategoryLabel(category)}), ma ${opponentName} è ${positionsAbove} posizioni sopra di te.`,
     };
   }
 

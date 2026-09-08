@@ -36,7 +36,13 @@ const scoreSchema = z
   .trim()
   .min(1, "Inserisci il punteggio dei set.")
   .max(40, "Punteggio troppo lungo.")
-  .regex(/^[\p{L}0-9\s\-(),.]{1,40}$/u, "Punteggio non valido.");
+  .regex(
+    /^[\p{L}0-9\s\-(),./]{1,40}$/u,
+    "Punteggio non valido. Usa un trattino, una barra o uno spazio (es. 6-4, 6/4 o 6 4).",
+  )
+  .transform((value) =>
+    value.replace(/\//g, "-").replace(/\s+/g, " ").trim(),
+  );
 
 const uuidSchema = z.string().uuid();
 
