@@ -47,7 +47,7 @@ async function AppShellContent({ children }: { children: ReactNode }) {
     <div className="min-h-svh bg-background">
       <AppSidebar userName={userName} isAdmin={isAdmin} />
       <div className="flex min-h-svh flex-col md:pl-64">
-        <MobileHeader userName={userName} />
+        <MobileHeader userName={userName} isAdmin={isAdmin} />
         <main className="flex-1 animate-fade-in pb-24 md:pb-10">
           {children}
         </main>

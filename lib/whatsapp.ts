@@ -29,12 +29,16 @@ export function normalizePhoneForWhatsApp(rawPhone: string): string {
   return `${ITALIAN_COUNTRY_CODE}${digitsOnly.replace(/^0+/, "")}`;
 }
 
-/** Builds the pre-filled Italian challenge message shown in WhatsApp. */
+/**
+ * Builds the pre-filled Italian challenge message shown in WhatsApp. Plain
+ * ASCII only (no trailing emoji after the "?") so the question mark always
+ * renders normally regardless of the device/WhatsApp font support.
+ */
 export function buildChallengeMessage(
   requesterName: string,
   opponentName: string,
 ): string {
-  return `Ciao ${opponentName}! Sono ${requesterName}: ti va di fare una partita per la classifica del Circolo Tennis Dozza? 🎾`;
+  return `Ciao ${opponentName}! Sono ${requesterName}: ti va di fare una partita per la classifica del Circolo Tennis Dozza?`;
 }
 
 /** Builds a `https://wa.me/...` deep link with an URL-encoded message. */

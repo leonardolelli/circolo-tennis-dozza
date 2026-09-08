@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { authEmailForUsername } from "@/lib/constants";
 import { getPostLoginPath } from "@/app/actions/auth";
@@ -31,7 +31,6 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -49,12 +48,13 @@ export function LoginForm({
       if (error) throw error;
 
       const redirect = searchParams.get("redirect");
-      if (redirect) {
-        router.replace(redirect);
-      } else {
-        router.replace(await getPostLoginPath());
-      }
-      router.refresh();
+      const path = redirect ?? (await getPostLoginPath());
+
+      // Navigate with a full page load instead of the client-side router: the
+      // fresh session cookie is guaranteed to be sent with the next request
+      // and the destination is rendered server-side, which avoids the screen
+      // getting stuck right after a successful login.
+      window.location.replace(path);
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Si è verificato un errore";

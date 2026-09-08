@@ -6,6 +6,7 @@ import { Home, LogIn, Shield, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { CLUB_NAME, SITE_NAV_ITEMS } from "@/lib/constants";
+import { getInitials } from "@/lib/format";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { LogoutButton } from "@/components/logout-button";
 
@@ -26,12 +27,30 @@ export function AppSidebar({
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex h-16 items-center gap-3 px-6">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tennis text-sm font-bold text-tennis-foreground">
-          CT
-        </span>
-        <span className="truncate text-lg font-semibold tracking-tight">
-          {CLUB_NAME}
-        </span>
+        {isLoggedIn ? (
+          <>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tennis text-sm font-bold text-tennis-foreground">
+              {userName ? getInitials(userName) : "CT"}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold leading-tight tracking-tight">
+                {userName}
+              </p>
+              <p className="text-xs text-sidebar-foreground/60">
+                {isAdmin ? "Amministratore" : "Socio"}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tennis text-sm font-bold text-tennis-foreground">
+              CT
+            </span>
+            <span className="truncate text-lg font-semibold tracking-tight">
+              {CLUB_NAME}
+            </span>
+          </>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -56,14 +75,18 @@ export function AppSidebar({
         })}
       </nav>
 
-      <div className="space-y-2 border-t border-sidebar-border p-3">
+      <div className="space-y-1.5 border-t border-sidebar-border p-3">
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 rounded-lg bg-tennis/15 px-3 py-2 text-sm font-semibold text-tennis transition-colors hover:bg-tennis/25"
+          >
+            <Shield className="h-4 w-4" />
+            Area admin
+          </Link>
+        )}
         {isLoggedIn ? (
-          <div className="flex items-center gap-2 rounded-lg bg-sidebar-accent/60 px-3 py-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground">
-              {userName}
-            </span>
-            <LogoutButton />
-          </div>
+          <LogoutButton />
         ) : (
           <Link
             href="/login"
@@ -73,18 +96,9 @@ export function AppSidebar({
             Accedi
           </Link>
         )}
-        {isAdmin && (
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-          >
-            <Shield className="h-4 w-4" />
-            Area admin
-          </Link>
-        )}
         <div className="flex items-center justify-between border-t border-sidebar-border px-3 pt-3">
           <span className="text-xs text-sidebar-foreground/50">
-            {CLUB_NAME}
+            {isLoggedIn ? (isAdmin ? "Area di gestione" : "Socio") : CLUB_NAME}
           </span>
           <ThemeSwitcher className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
         </div>
