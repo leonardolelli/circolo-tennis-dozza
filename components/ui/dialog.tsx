@@ -27,9 +27,10 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /**
- * Keep centering on the overlay rather than via `top/left + translate` on the
- * content itself. That is more stable across route transitions, scroll state,
- * and browser UI overlays while preserving the same shared modal primitive.
+ * Responsive modal. On small screens the dialog is aligned to the top of the
+ * viewport (instead of vertically centered) and keeps a scrollable body, so
+ * when the mobile keyboard opens it never covers the focused text field.
+ * On `sm:` and up it returns to a vertically centered card.
  */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -37,12 +38,12 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <div className="fixed inset-0 z-50 overflow-y-auto p-4">
-      <div className="grid min-h-full place-items-center">
+    <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:py-6">
+      <div className="flex min-h-full items-start justify-center sm:items-center">
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            "relative z-50 grid min-h-[350px] max-h-[85svh] w-full max-w-[90vw] sm:max-w-lg gap-6 overflow-y-auto rounded-2xl border bg-background px-6 py-10 shadow-lg duration-200",
+            "relative z-50 grid w-full max-w-[calc(100vw-2rem)] max-h-[82svh] gap-4 overflow-y-auto rounded-2xl border bg-background px-5 py-6 text-foreground shadow-lg duration-200 sm:max-h-[85svh] sm:max-w-lg sm:px-6 sm:py-7",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             className,
@@ -67,7 +68,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
+      "flex flex-col gap-1.5 text-left sm:text-left",
       className,
     )}
     {...props}
@@ -81,7 +82,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+      "mt-1 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end",
       className,
     )}
     {...props}
@@ -96,7 +97,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
+      "text-xl font-semibold leading-tight tracking-tight",
       className,
     )}
     {...props}
@@ -110,7 +111,10 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn(
+      "text-[15px] leading-relaxed text-muted-foreground",
+      className,
+    )}
     {...props}
   />
 ));

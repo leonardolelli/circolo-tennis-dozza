@@ -1,6 +1,7 @@
 /**
  * Helpers to turn a member's phone number into a `wa.me` deep link that
- * opens WhatsApp with a pre-filled challenge message.
+ * opens WhatsApp with a pre-filled message (challenge request or account
+ * credentials).
  */
 
 const ITALIAN_COUNTRY_CODE = "39";
@@ -29,12 +30,40 @@ export function normalizePhoneForWhatsApp(rawPhone: string): string {
   return `${ITALIAN_COUNTRY_CODE}${digitsOnly.replace(/^0+/, "")}`;
 }
 
-/** Builds the pre-filled Italian challenge message shown in WhatsApp. */
+/**
+ * Builds the pre-filled Italian challenge message shown in WhatsApp. Plain
+ * ASCII only (no trailing emoji after the "?") so the question mark always
+ * renders normally regardless of the device/WhatsApp font support.
+ */
 export function buildChallengeMessage(
   requesterName: string,
   opponentName: string,
 ): string {
-  return `Ciao ${opponentName}! Sono ${requesterName}: ti va di fare una partita per la classifica del Circolo Tennis Dozza? 🎾`;
+  return `Ciao ${opponentName}! Sono ${requesterName}: ti va di fare una partita per la classifica del Circolo Tennis Dozza?`;
+}
+
+/**
+ * Builds the pre-filled Italian message an admin sends to a member with their
+ * login credentials and the link to the sign-in page.
+ */
+export function buildCredentialsMessage({
+  memberName,
+  username,
+  password,
+  loginUrl,
+}: {
+  memberName: string;
+  username: string;
+  password: string;
+  loginUrl: string;
+}): string {
+  return [
+    `Ciao ${memberName}! Ecco le tue credenziali per accedere all'area riservata del Circolo Tennis Dozza:`,
+    "",
+    `Username: ${username}`,
+    `Password: ${password}`,
+    ""
+  ].join("\n");
 }
 
 /** Builds a `https://wa.me/...` deep link with an URL-encoded message. */

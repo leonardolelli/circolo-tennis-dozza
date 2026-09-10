@@ -12,19 +12,25 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { authEmailForUsername } from "@/lib/constants";
+import { getPostLoginPath } from "@/app/actions/auth";
 
+/**
+ * Member/admin login. Members type their club-assigned username (the auth
+ * email is derived from it - see lib/constants.ts authEmailForUsername), so
+ * no email is ever shown or asked. Password resets are done by the manager
+ * from /admin/soci, so there is no "forgot password" self-service here.
+ */
 export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -34,16 +40,28 @@ export function LoginForm({
     setError(null);
 
     try {
+      const email = authEmailForUsername(username);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
-      router.push(searchParams.get("redirect") ?? "/admin");
-      router.refresh();
+
+      const redirect = searchParams.get("redirect");
+      const path = redirect ?? (await getPostLoginPath());
+
+      // Navigate with a full page load instead of the client-side router: the
+      // fresh session cookie is guaranteed to be sent with the next request
+      // and the destination is rendered server-side, which avoids the screen
+      // getting stuck right after a successful login.
+      window.location.replace(path);
     } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Si è verificato un errore";
       setError(
-        error instanceof Error ? error.message : "Si è verificato un errore",
+        /invalid login credentials/i.test(message)
+          ? "Username o password non corretti."
+          : message,
       );
     } finally {
       setIsLoading(false);
@@ -56,36 +74,32 @@ export function LoginForm({
         <CardHeader>
           <CardTitle className="text-2xl">Accedi</CardTitle>
           <CardDescription>
-            Inserisci le credenziali amministratore per continuare
+            Inserisci lo username e la password che ti sono stati assegnati dal
+            circolo.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@circolotennisdozza.it"
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  placeholder="es. mario.rossi"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    Password dimenticata?
-                  </Link>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -95,6 +109,10 @@ export function LoginForm({
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Accesso in corso..." : "Accedi"}
               </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Non hai le credenziali? Contatta l&apos;amministratore del
+                circolo.
+              </p>
             </div>
           </form>
         </CardContent>

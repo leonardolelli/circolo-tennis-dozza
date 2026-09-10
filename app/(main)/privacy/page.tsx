@@ -130,8 +130,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-foreground">9. Natura del conferimento</h2>
           <p className="mt-2">
-            Il conferimento dei dati necessari alla gestione dei soci, delle sfide,
-            dei PIN e dei risultati è necessario per fruire delle relative funzioni.
+            Il conferimento dei dati necessari alla gestione dei soci, delle
+            sfide, delle credenziali di accesso e dei risultati è necessario per
+            fruire delle relative funzioni.
             L&apos;eventuale mancato conferimento può impedire la partecipazione alla
             classifica o l&apos;uso delle funzionalità riservate.
           </p>

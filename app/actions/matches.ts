@@ -1,8 +1,6 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import {
   adminMatchSchema,
@@ -11,11 +9,10 @@ import {
 } from "@/lib/validation";
 import { calculateEloDelta } from "@/lib/elo";
 import { getEloParams } from "@/lib/data/site-settings";
+import { requireAdmin, requireSocio } from "@/lib/auth";
 import type { ActionResult, MatchOutcome } from "@/lib/types";
 
 export interface SubmitMatchPayload {
-  inseritoreId: string;
-  inseritorePin: string;
   avversarioId: string;
   esito: MatchOutcome;
   risultato: string;
@@ -25,16 +22,8 @@ function normalizeFullName(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("it-IT");
 }
 
-async function assertAdmin() {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-
-  if (!claims?.claims) {
-    return { success: false as const, error: "Devi accedere come amministratore." };
-  }
-
-  return { success: true as const };
-}
+/** Admin-only guard (session + soci.is_admin) used by admin actions. */
+const assertAdmin = requireAdmin;
 
 async function rebuildRankingFromHistory(
   serviceClient: ReturnType<typeof createServiceRoleClient>,
@@ -244,13 +233,11 @@ function revalidateMatchPaths() {
 /**
  * Records a match result and updates both players' Elo-style rating.
  *
- * Security: this is a public Server Action (no Supabase Auth session
- * involved - club members only ever identify themselves with their PIN).
- * It re-validates every input with zod, then verifies the submitting
- * player's PIN against the bcrypt hash stored in `soci.pin` *before*
- * touching anything else. Only once that succeeds does it compute the
- * rating swing and hand off to the `apply_match_result` SQL function
- * (via the service-role client) to perform the atomic write.
+ * The submitting player is always the currently logged-in socio (derived
+ * from the session via `soci.user_id`) - it is never taken from the client.
+ * Inputs are re-validated with zod, then the opponent row is loaded and the
+ * rating swing is computed before handing off to the `apply_match_result`
+ * SQL function (via the service-role client) for the atomic write.
  */
 export async function submitMatchResult(
   payload: SubmitMatchPayload,
@@ -262,24 +249,31 @@ export async function submitMatchResult(
       error: parsed.error.issues[0]?.message ?? "Dati non validi.",
     };
   }
-  const { inseritoreId, inseritorePin, avversarioId, esito, risultato } =
-    parsed.data;
+  const { avversarioId, esito, risultato } = parsed.data;
+
+  const member = await requireSocio();
+  if (!member.success) {
+    return member;
+  }
+  const inseritore = member.socio;
+
+  if (inseritore.id === avversarioId) {
+    return {
+      success: false,
+      error: "Non puoi selezionare te stesso come avversario.",
+    };
+  }
 
   const supabase = createServiceRoleClient();
 
-  const { data: players, error: fetchError } = await supabase
+  const { data: avversario, error: fetchError } = await supabase
     .from("soci")
-    .select("id, punti, pin, congelato")
-    .in("id", [inseritoreId, avversarioId]);
+    .select("id, punti, congelato")
+    .eq("id", avversarioId)
+    .maybeSingle();
 
-  if (fetchError || !players || players.length !== 2) {
-    return { success: false, error: "Giocatore o avversario non trovato." };
-  }
-
-  const inseritore = players.find((player) => player.id === inseritoreId);
-  const avversario = players.find((player) => player.id === avversarioId);
-  if (!inseritore || !avversario) {
-    return { success: false, error: "Giocatore o avversario non trovato." };
+  if (fetchError || !avversario) {
+    return { success: false, error: "Avversario non trovato." };
   }
 
   if (inseritore.congelato || avversario.congelato) {
@@ -289,18 +283,13 @@ export async function submitMatchResult(
     };
   }
 
-  const isPinValid = await bcrypt.compare(inseritorePin, inseritore.pin);
-  if (!isPinValid) {
-    return { success: false, error: "PIN errato." };
-  }
-
   const winnerRating = esito === "win" ? inseritore.punti : avversario.punti;
   const loserRating = esito === "win" ? avversario.punti : inseritore.punti;
   const eloParams = await getEloParams();
   const variazione = calculateEloDelta(winnerRating, loserRating, eloParams);
 
   const { error: rpcError } = await supabase.rpc("apply_match_result", {
-    p_inseritore_id: inseritoreId,
+    p_inseritore_id: inseritore.id,
     p_avversario_id: avversarioId,
     p_esito_inseritore: esito,
     p_risultato: risultato,

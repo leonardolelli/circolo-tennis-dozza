@@ -96,3 +96,71 @@ export function getMaxRankDelta(
       return config.bronzeMaxRankDelta;
   }
 }
+
+/**
+ * Builds a 1-based rank map from members already ordered by `punti` desc
+ * (frozen members included, matching how the server computes ranks). Used to
+ * evaluate the challenge rule both client- and server-side.
+ */
+export function buildRankMap(
+  members: Array<{ id: string; punti: number }>,
+): Record<string, number> {
+  const rankById: Record<string, number> = {};
+  members.forEach((member, index) => {
+    rankById[member.id] = index + 1;
+  });
+  return rankById;
+}
+
+export interface ChallengeRuleOutcome {
+  allowed: boolean;
+  reason: string;
+}
+
+/**
+ * Evaluates the per-category "max positions above" rule for a requester vs an
+ * opponent. Challenging someone lower (or at the same rank) is always allowed.
+ *
+ * Shared by the server (`requestChallenge`, authoritative validation) and by
+ * the client (instant feedback when tapping a ranking row) so the explanations
+ * never diverge. `rankById` comes from {@link buildRankMap}.
+ */
+export function evaluateChallengeRule(input: {
+  requester: { id: string; punti: number };
+  opponent: { id: string; punti: number; nome?: string };
+  rankById: Record<string, number>;
+  config?: CategoryConfig;
+}): ChallengeRuleOutcome {
+  const config = input.config ?? DEFAULT_CATEGORY_CONFIG;
+
+  if (input.requester.id === input.opponent.id) {
+    return { allowed: false, reason: "Non puoi sfidare te stesso." };
+  }
+
+  const requesterRank = input.rankById[input.requester.id];
+  const opponentRank = input.rankById[input.opponent.id];
+  if (!requesterRank || !opponentRank) {
+    return { allowed: false, reason: "Classifica non disponibile." };
+  }
+
+  if (opponentRank >= requesterRank) {
+    return { allowed: true, reason: "" };
+  }
+
+  const category = getCategory(input.requester.punti, config);
+  const maxRankDelta = getMaxRankDelta(category, config);
+  const positionsAbove = requesterRank - opponentRank;
+
+  if (positionsAbove > maxRankDelta) {
+    const opponentName =
+      input.opponent.nome?.trim() && input.opponent.nome.trim().length > 0
+        ? input.opponent.nome.trim()
+        : "L'avversario selezionato";
+    return {
+      allowed: false,
+      reason: `Puoi sfidare chi è al massimo ${maxRankDelta} posizioni sopra di te in classifica (categoria ${getCategoryLabel(category)}), ma ${opponentName} è ${positionsAbove} posizioni sopra di te.`,
+    };
+  }
+
+  return { allowed: true, reason: "" };
+}

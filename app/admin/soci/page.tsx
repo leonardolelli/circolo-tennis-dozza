@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { AddMemberDialog } from "@/components/admin/add-member-dialog";
 import { MembersCsvTools } from "@/components/admin/members-csv-tools";
 import { MembersBrowser } from "@/components/admin/members-browser";
@@ -49,13 +49,14 @@ async function SociContent({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  // Fetch all members once; filtering and pagination happen client-side in
-  // MembersBrowser, so typing never triggers another DB query.
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  // Fetch all members once (service-role: telefono/username/user_id/is_admin
+  // are not granted to authenticated sessions); filtering and pagination
+  // happen client-side in MembersBrowser.
+  const serviceClient = createServiceRoleClient();
+  const { data, error } = await serviceClient
     .from("soci")
     .select(
-      "id, nome, cognome, telefono, punti, punti_iniziali, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
+      "id, nome, cognome, telefono, punti, punti_iniziali, username, user_id, is_admin, password, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
     )
     .order("punti", { ascending: false })
     .order("cognome", { ascending: true })
@@ -65,7 +66,12 @@ async function SociContent({
     console.error("Failed to load members:", error);
   }
 
-  const members: SocioAdmin[] = data ?? [];
+  // Rows migrated from the old schema may not have a username yet; the UI
+  // treats it as present (provisioning via edit dialog or CSV import fills it).
+  const members: SocioAdmin[] = (data ?? []).map((member) => ({
+    ...member,
+    username: member.username ?? "",
+  }));
   const categoryConfig = await getCategoryConfig();
   const params = await searchParams;
   const initialQuery = sanitizeSearchQuery(params.q ?? "");

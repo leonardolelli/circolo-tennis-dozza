@@ -34,7 +34,7 @@ export const CLUB_LEGAL = {
 export const TECHNICAL_COOKIES = [
   {
     name: "sb-access-token / sb-refresh-token",
-    purpose: "Authentication session for admin area",
+    purpose: "Authentication session for members and admins",
     provider: "Supabase",
     duration: "Session / according to Supabase session settings",
   },
@@ -44,3 +44,21 @@ export const SITE_NAV_ITEMS = [
   { href: "/", label: "Home" },
   { href: "/classifica", label: "Classifica" },
 ] as const;
+
+/**
+ * Domain used to derive the Supabase Auth email from a member's login
+ * username, i.e. `nome.cognome@dozza.club`. It is synthetic (not a real
+ * mailbox) because accounts are created and managed by the site manager -
+ * members only ever type their username.
+ */
+export const AUTH_EMAIL_DOMAIN = "dozza.club";
+
+/**
+ * Builds the (synthetic) auth email for a username, e.g.
+ * "mario.rossi" -> "mario.rossi@club.dozza". Used both when the manager
+ * provisions an account and at login time, so no pre-auth lookup is needed.
+ */
+export function authEmailForUsername(username: string): string {
+  const normalized = username.trim().toLowerCase();
+  return `${normalized}@${AUTH_EMAIL_DOMAIN}`;
+}

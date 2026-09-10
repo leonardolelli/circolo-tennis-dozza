@@ -11,19 +11,23 @@
 -- Security model summary
 -- -----------------------
 -- - `anon` / `authenticated` (the public API keys used by the browser and by
---   Server Components) can only ever READ data. For `soci`, `anon` only
---   sees the public-safe columns (never `pin` or `telefono`); `authenticated`
---   (the logged-in club admin) additionally sees `telefono` for the member
---   management screen, but never `pin`.
+--   Server Components) can only ever READ data, and only the public-safe
+--   columns of `soci` (id, nome, cognome, punti, vittorie, sconfitte,
+--   congelato, data_ultima_partita, created_at). Sensitive columns
+--   (`telefono`, `punti_iniziali`, `username`, `user_id`, `is_admin`) are
+--   never readable by anon/authenticated - only the service_role sees them
+--   (used internally by Server Components/Actions for admin screens).
 -- - All writes (adding a member, recording a match, requesting a WhatsApp
 --   challenge) go through Next.js Server Actions that use the service_role
 --   key (a server-only secret) AFTER performing their own authorization
 --   check in TypeScript:
---     * Adding a member requires a valid Supabase Auth session (the admin).
---     * Recording a match / requesting a challenge requires the submitting
---       member's 8-digit PIN to match the bcrypt hash stored in `soci.pin`.
---   See lib/supabase/service.ts and app/actions/*.ts for the application-side
---   half of this contract.
+--     * Adding a member requires a Supabase Auth session of an admin socio
+--       (`soci.is_admin`).
+--     * Recording a match / requesting a challenge requires the session of
+--       the member who owns the action; identity always comes from the
+--       session (via `soci.user_id`), never from client-supplied ids.
+--   See lib/supabase/service.ts, lib/auth.ts and app/actions/*.ts for the
+--   application-side half of this contract.
 -- - Domain values (e.g. match outcome) are stored in English ('win' / 'loss')
 --   to keep the data model/code language-neutral; Italian labels only exist
 --   in the UI layer.
@@ -42,9 +46,19 @@ create table if not exists public.soci (
   telefono text not null check (telefono ~ '^\+?[0-9 ]{6,20}$'),
   punti_iniziali integer not null default 1000,
   punti integer not null default 1000,
-  -- Bcrypt hash of the member's 8-digit PIN. Never store or return the raw
-  -- PIN - see lib/validation.ts (format) and app/actions/members.ts (hashing).
-  pin text not null,
+  -- Login identity: username chosen by the manager (lowercase) and the linked
+  -- Supabase Auth account (user_id). The auth email is derived from the
+  -- username (<username>@<AUTH_EMAIL_DOMAIN>) - it is synthetic, never shown.
+  -- username/password are nullable at the DB level (the app always sets them
+  -- together with the account) so the schema can also be applied on an
+  -- already-populated table.
+  username text,
+  user_id uuid,
+  is_admin boolean not null default false,
+  -- Plaintext login password. Kept reversible BY EXPLICIT REQUEST so the
+  -- manager can always see it in the CSV export. NEVER granted to
+  -- anon/authenticated; only the service_role reads it.
+  password text,
   vittorie integer not null default 0 check (vittorie >= 0),
   sconfitte integer not null default 0 check (sconfitte >= 0),
   congelato boolean not null default false,
@@ -63,10 +77,36 @@ update public.soci
    and punti_iniziali = 1000
    and punti <> 1000;
 
-comment on table public.soci is 'Club members: ranking points, contact info and hashed PIN.';
-comment on column public.soci.pin is 'Bcrypt hash of the 8-digit member PIN, never the raw value.';
+comment on table public.soci is 'Club members: ranking points, contact info, login username, linked auth account and (plaintext, by request) password.';
 
 create index if not exists soci_punti_idx on public.soci (punti desc);
+
+-- -----------------------------------------------------------------------------
+-- Account-linked auth (2026-09): the PIN system was removed. Each member
+-- authenticates with a username + password through Supabase Auth; the account
+-- is linked back to this row via user_id (see lib/auth.ts). These statements
+-- upgrade an existing database and are no-ops on a fresh one.
+-- -----------------------------------------------------------------------------
+alter table public.soci drop column if exists pin;
+
+alter table public.soci
+  add column if not exists username text,
+  add column if not exists user_id uuid,
+  add column if not exists is_admin boolean not null default false,
+  add column if not exists password text;
+
+-- Existing rows (already-populated database) have no username yet, so the
+-- column stays nullable here; the app enforces a username whenever it creates
+-- or links an account. Canonical usernames/passwords are then provisioned by
+-- importing the member CSV (see app/actions/members.ts importMembersCsv).
+
+comment on column public.soci.username is 'Lowercase login username; the linked Supabase Auth email is derived as <username>@<AUTH_EMAIL_DOMAIN>.';
+comment on column public.soci.user_id is 'Supabase Auth user id linked to this member (set when the manager provisions the account).';
+comment on column public.soci.is_admin is 'Grants access to the /admin area; admins are also club members (soci rows).';
+comment on column public.soci.password is 'Plaintext login password, kept reversible for the manager CSV export (by design). Server-only access.';
+
+create unique index if not exists soci_username_key on public.soci (username);
+create unique index if not exists soci_user_id_key on public.soci (user_id);
 
 -- -----------------------------------------------------------------------------
 -- Table: partite (recorded matches)
@@ -184,17 +224,16 @@ alter table public.sponsor enable row level security;
 alter table public.site_settings enable row level security;
 
 -- soci: anon/authenticated may only SELECT, and only the public-safe columns.
--- `pin` is withheld from everyone except the service_role (used internally
--- by Server Actions after a manual bcrypt check); `telefono` is additionally
--- exposed to `authenticated` (the club admin) for the member-management
--- screen, but still never to `anon`. Column-privilege restrictions sit on
--- top of row level security, so a mistaken `select *` from a
--- non-privileged client fails loudly instead of silently leaking data.
+-- Sensitive columns (`telefono`, `punti_iniziali`, `username`, `user_id`,
+-- `is_admin`) are withheld from everyone except the service_role (used by
+-- Server Components/Actions for admin screens, e.g. /admin/soci). Column-
+-- privilege restrictions sit on top of row level security, so a mistaken
+-- `select *` from a non-privileged client fails loudly instead of silently
+-- leaking data.
 revoke all on table public.soci from anon, authenticated;
 grant select (
   id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at
 ) on table public.soci to anon, authenticated;
-grant select (telefono, punti_iniziali) on table public.soci to authenticated;
 
 DROP POLICY IF EXISTS soci_public_read ON public.soci;
 create policy "soci_public_read" on public.soci
@@ -247,7 +286,7 @@ create policy "site_settings_public_read" on public.site_settings
 -- apply_match_result: atomically records a match and updates both players.
 -- =============================================================================
 -- Called once from the `submitMatchResult` Server Action, after it has:
---   1. verified the submitting player's PIN (bcrypt compare in TypeScript),
+--   1. resolved the submitting player from the session socio (see lib/auth.ts),
 --   2. computed the Elo-style point delta in TypeScript (see lib/elo.ts).
 -- This function only performs the trusted, atomic part of the write (row
 -- locking + relative point updates + the history row) so a match can never
@@ -367,8 +406,11 @@ grant execute on function public.apply_match_result(uuid, uuid, text, text, inte
 -- insert into public.sponsor (nome, logo_url, link, display_order) values
 --   ('Sponsor Esempio', 'https://placehold.co/240x120?text=Sponsor', 'https://example.com', 0);
 --
--- Note on the first admin account: admins authenticate with Supabase Auth
--- (email + password), not with the soci.pin system. Create the first admin
--- from the Supabase Dashboard under Authentication > Users > Add user, or
--- with `supabase.auth.admin.createUser(...)` from a trusted script. There is
--- intentionally no public sign-up page in this app.
+-- Note on accounts: members and admins authenticate with Supabase Auth using
+-- a username + password (the auth email is derived from the username, see
+-- lib/constants.ts authEmailForUsername). Accounts are provisioned by the site
+-- manager from the app (/admin/soci), which also links each auth user to its
+-- `soci` row via user_id. There is intentionally no public sign-up page in
+-- this app. The first admin account can be created from the Supabase Dashboard
+-- (Authentication > Users > Add user) and then linked to a soci row with
+-- is_admin = true.

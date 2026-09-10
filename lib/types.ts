@@ -1,12 +1,13 @@
 import type { Database } from "@/lib/database.types";
 
-/** A club member row exactly as stored in the database (includes the pin hash). */
+/** A club member row exactly as stored in the database (server-only columns included). */
 export type Socio = Database["public"]["Tables"]["soci"]["Row"];
 
 /**
  * The subset of `soci` columns that anon/authenticated clients are actually
  * allowed to read (see the column-level GRANT in supabase/schema.sql).
- * `pin` and `telefono` are never sent to the browser.
+ * Sensitive columns (`telefono`, `username`, `user_id`, `is_admin`, ...)
+ * are never sent to the browser.
  */
 export type SocioPublic = Pick<
   Socio,
@@ -24,11 +25,20 @@ export type SocioPublic = Pick<
 export type Partita = Database["public"]["Tables"]["partite"]["Row"];
 
 /**
- * Columns visible to an authenticated (admin) session: everything in
- * `SocioPublic` plus `telefono` (see the column-level GRANT in
- * supabase/schema.sql). `pin` is still never exposed to the app layer.
+ * Columns used by the admin member-management screen: public columns plus the
+ * sensitive ones needed to manage the member and its account. Read through the
+ * service-role client only (see supabase/schema.sql - these columns are not
+ * granted to anon/authenticated). `username` is treated as present here: rows
+ * are provisioned (or updated via CSV import) with a username.
  */
-export type SocioAdmin = SocioPublic & Pick<Socio, "telefono" | "punti_iniziali">;
+export type SocioAdmin = SocioPublic & {
+  telefono: string;
+  punti_iniziali: number;
+  username: string;
+  user_id: string | null;
+  is_admin: boolean;
+  password: string | null;
+};
 
 export type Sponsor = Database["public"]["Tables"]["sponsor"]["Row"];
 

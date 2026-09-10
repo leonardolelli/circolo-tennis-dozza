@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import type { SocioPublic } from "@/lib/types";
 
 interface PlayerComboboxProps {
-  label: string;
+  /** Visible label above the field. Omit it when the field needs no label. */
+  label?: string;
   players: SocioPublic[];
   value: SocioPublic | null;
   onChange: (player: SocioPublic | null) => void;
@@ -53,7 +54,7 @@ export function PlayerCombobox({
   // If the typed text exactly matches a single player's full name
   // (either "Nome Cognome" or "Cognome Nome"), resolve it immediately.
   // This lets users type the full name instead of having to pick it from
-  // the dropdown, e.g. the challenge PIN flow on mobile.
+  // the dropdown, e.g. the one-tap challenge flow on mobile.
   useEffect(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery || value) return;
@@ -86,13 +87,14 @@ export function PlayerCombobox({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={inputId}>{label}</Label>
+      {label ? <Label htmlFor={inputId}>{label}</Label> : null}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={inputId}
           value={query}
           disabled={disabled}
+          aria-label={label ? undefined : placeholder}
           placeholder={placeholder}
           autoComplete="off"
           className="pl-9"

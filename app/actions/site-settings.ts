@@ -16,18 +16,10 @@ import type { EloParams } from "@/lib/elo";
 import type { CategoryConfig } from "@/lib/categories";
 import type { AwardPrizes } from "@/lib/data/site-settings";
 import { createServiceRoleClient } from "@/lib/supabase/service";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 
-async function assertAdmin() {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-
-  if (!claims?.claims) {
-    return { success: false as const, error: "Devi accedere come amministratore." };
-  }
-
-  return { success: true as const };
-}
+/** Admin-only guard (session + soci.is_admin). */
+const assertAdmin = requireAdmin;
 
 function revalidateMaintenancePaths() {
   revalidatePath("/");

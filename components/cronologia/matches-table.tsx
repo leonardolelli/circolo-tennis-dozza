@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { SortToggleLink } from "@/components/cronologia/sort-toggle-link";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Partita } from "@/lib/types";
 
@@ -32,11 +32,11 @@ export function MatchesTable({
   }
 
   return (
-    <div className="rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>
+            <TableHead className="align-bottom">
               <SortToggleLink
                 label="Data"
                 href={sortHref}
@@ -45,16 +45,23 @@ export function MatchesTable({
             </TableHead>
             <TableHead>Partita</TableHead>
             <TableHead className="hidden sm:table-cell">Punteggio</TableHead>
-            <TableHead className="text-right">Variazione punti</TableHead>
+            <TableHead className="whitespace-normal text-right">
+              Variazione punti
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {matches.map((match) => (
             <TableRow key={match.id}>
-              <TableCell className="whitespace-nowrap text-muted-foreground">
-                {formatDateTime(match.data)}
+              <TableCell className="p-2 align-top sm:p-3">
+                <div className="flex flex-col whitespace-nowrap text-xs leading-snug text-muted-foreground sm:flex-row sm:items-baseline sm:gap-1 sm:text-sm">
+                  <span>{formatDate(match.data)}</span>
+                  <span className="text-muted-foreground/70">
+                    {formatTime(match.data)}
+                  </span>
+                </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="p-2 sm:p-3">
                 <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
                   <span
                     className={cn(
@@ -80,11 +87,14 @@ export function MatchesTable({
                   {match.risultato}
                 </div>
               </TableCell>
-              <TableCell className="hidden sm:table-cell">
+              <TableCell className="hidden p-2 sm:table-cell sm:p-3">
                 {match.risultato}
               </TableCell>
-              <TableCell className="text-right">
-                <Badge variant="outline" className="border-tennis/40 text-tennis">
+              <TableCell className="p-2 text-right sm:p-3">
+                <Badge
+                  variant="outline"
+                  className="whitespace-nowrap border-tennis/40 px-2 text-tennis"
+                >
                   ±{match.punti_vincitore_variazioni}
                 </Badge>
               </TableCell>
