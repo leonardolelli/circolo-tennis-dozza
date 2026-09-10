@@ -79,7 +79,6 @@ export function MembersTable({
       memberName: member.nome,
       username: member.username,
       password: member.password,
-      loginUrl: `${window.location.origin}/login`,
     });
 
     window.open(

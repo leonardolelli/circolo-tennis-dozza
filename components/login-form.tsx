@@ -71,16 +71,12 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Accedi</CardTitle>
-          <CardDescription>
-            Inserisci lo username e la password che ti sono stati assegnati dal
-            circolo.
-          </CardDescription>
+        <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardTitle className="text-xl sm:text-2xl">Accedi</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
           <form onSubmit={handleLogin}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="username">Username</Label>
                 <Input

@@ -44,25 +44,23 @@ export function buildChallengeMessage(
 
 /**
  * Builds the pre-filled Italian message an admin sends to a member with their
- * login credentials and the link to the sign-in page.
+ * login credentials.
  */
 export function buildCredentialsMessage({
   memberName,
   username,
   password,
-  loginUrl,
 }: {
   memberName: string;
   username: string;
   password: string;
-  loginUrl: string;
 }): string {
   return [
     `Ciao ${memberName}! Ecco le tue credenziali per accedere all'area riservata del Circolo Tennis Dozza:`,
     "",
     `Username: ${username}`,
     `Password: ${password}`,
-    ""
+    "",
   ].join("\n");
 }
 
