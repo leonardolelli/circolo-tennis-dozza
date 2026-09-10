@@ -20,7 +20,7 @@ export async function GET() {
   const { data, error } = await serviceClient
     .from("soci")
     .select(
-      "id, nome, cognome, telefono, punti_iniziali, punti, username, password, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
+      "id, nome, cognome, telefono, punti_iniziali, punti, username, password, is_admin, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
     )
     .order("cognome", { ascending: true })
     .order("nome", { ascending: true });
@@ -42,6 +42,7 @@ export async function GET() {
     "punti",
     "username",
     "password",
+    "is_admin",
     "vittorie",
     "sconfitte",
     "congelato",
@@ -62,6 +63,7 @@ export async function GET() {
         member.punti,
         member.username,
         member.password,
+        member.is_admin,
         member.vittorie,
         member.sconfitte,
         member.congelato,

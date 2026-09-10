@@ -23,6 +23,7 @@ interface MemberCsvRow {
   telefono: string;
   username: string;
   password: string;
+  is_admin?: string;
   punti_iniziali?: string;
   punti?: string;
   vittorie?: string;
@@ -299,6 +300,7 @@ function parseMembersCsv(csvText: string): {
       telefono: obj.telefono ?? "",
       username: obj.username ?? "",
       password: obj.password ?? "",
+      is_admin: obj.is_admin || undefined,
       punti_iniziali: obj.punti_iniziali || undefined,
       punti: obj.punti || undefined,
       vittorie: obj.vittorie || undefined,
@@ -975,6 +977,7 @@ export async function importMembersCsv(
       cognome,
       telefono,
       username,
+      is_admin: toOptionalBoolean(row.is_admin) ?? false,
       punti_iniziali: toOptionalInt(row.punti_iniziali) ?? 1000,
       punti: toOptionalInt(row.punti) ?? toOptionalInt(row.punti_iniziali) ?? 1000,
       vittorie: toOptionalInt(row.vittorie) ?? 0,

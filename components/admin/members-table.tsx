@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { MoreHorizontal, Pencil, Snowflake, Trash2 } from "lucide-react";
+import { Eye, EyeOff, MessageCircle, MoreHorizontal, Pencil, Shield, Snowflake, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { deleteMember, toggleMemberFrozen, updateMember } from "@/app/actions/members";
+import { buildCredentialsMessage, buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDate, formatWinRate } from "@/lib/format";
 import { getCategory } from "@/lib/categories";
 import type { CategoryConfig } from "@/lib/categories";
@@ -52,6 +53,7 @@ export function MembersTable({
   const [selectedMember, setSelectedMember] = useState<SocioAdmin | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   if (members.length === 0) {
@@ -59,6 +61,31 @@ export function MembersTable({
       <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
         Nessun giocatore trovato.
       </div>
+    );
+  }
+
+  /**
+   * Opens WhatsApp with a pre-filled message containing the member's login
+   * credentials. Runs synchronously on click, so the browser treats the new
+   * tab as a user-initiated action and does not block it as a popup.
+   */
+  function handleSendCredentials(member: SocioAdmin) {
+    if (!member.username || !member.password) {
+      toast.error("Credenziali non disponibili: imposta username e password.");
+      return;
+    }
+
+    const message = buildCredentialsMessage({
+      memberName: member.nome,
+      username: member.username,
+      password: member.password,
+      loginUrl: `${window.location.origin}/login`,
+    });
+
+    window.open(
+      buildWhatsAppLink(member.telefono, message),
+      "_blank",
+      "noopener,noreferrer",
     );
   }
 
@@ -70,17 +97,37 @@ export function MembersTable({
             <TableRow>
               <TableHead>Giocatore</TableHead>
               <TableHead className="hidden sm:table-cell">Telefono</TableHead>
-              <TableHead className="hidden md:table-cell">Stato</TableHead>
+              <TableHead className="hidden lg:table-cell">Username</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                <span className="flex items-center gap-1.5">
+                  Password
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => setShowPasswords((visible) => !visible)}
+                    aria-label={
+                      showPasswords ? "Nascondi password" : "Mostra password"
+                    }
+                    aria-pressed={showPasswords}
+                  >
+                    {showPasswords ? <EyeOff /> : <Eye />}
+                  </Button>
+                </span>
+              </TableHead>
               <TableHead className="text-right">Punti</TableHead>
               <TableHead className="hidden text-right sm:table-cell">
                 V - S
               </TableHead>
-              <TableHead className="hidden text-right md:table-cell">
+              {/* Win rate is kept for tablet only: the desktop table shows credentials instead. */}
+              <TableHead className="hidden text-right md:table-cell lg:hidden">
                 % Vittorie
               </TableHead>
               <TableHead className="hidden text-right lg:table-cell">
                 Ultima partita
               </TableHead>
+              <TableHead className="hidden md:table-cell">Stato</TableHead>
               <TableHead className="w-12 text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
@@ -96,6 +143,15 @@ export function MembersTable({
                       <CategoryBadge
                         category={getCategory(member.punti, categoryConfig)}
                       />
+                      {member.is_admin && (
+                        <Badge
+                          variant="outline"
+                          className="hidden gap-1 border-tennis/40 text-tennis lg:inline-flex"
+                        >
+                          <Shield className="h-3 w-3" />
+                          Admin
+                        </Badge>
+                      )}
                     </span>
                     {member.congelato && (
                       <Badge variant="secondary" className="w-fit gap-1">
@@ -108,6 +164,30 @@ export function MembersTable({
                 <TableCell className="hidden text-muted-foreground sm:table-cell">
                   {member.telefono}
                 </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                  {member.username || "—"}
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                  {member.password
+                    ? showPasswords
+                      ? member.password
+                      : "••••••••"
+                    : "—"}
+                </TableCell>
+                <TableCell className="text-right font-semibold text-tennis">
+                  {member.punti}
+                </TableCell>
+                <TableCell className="hidden text-right text-muted-foreground sm:table-cell">
+                  {member.vittorie} - {member.sconfitte}
+                </TableCell>
+                <TableCell className="hidden text-right text-muted-foreground md:table-cell lg:hidden">
+                  {formatWinRate(member.vittorie, member.sconfitte)}
+                </TableCell>
+                <TableCell className="hidden text-right text-muted-foreground lg:table-cell">
+                  {member.data_ultima_partita
+                    ? formatDate(member.data_ultima_partita)
+                    : "—"}
+                </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {member.congelato ? (
                     <Badge variant="secondary" className="gap-1">
@@ -117,20 +197,6 @@ export function MembersTable({
                   ) : (
                     <Badge variant="outline">Attivo</Badge>
                   )}
-                </TableCell>
-                <TableCell className="text-right font-semibold text-tennis">
-                  {member.punti}
-                </TableCell>
-                <TableCell className="hidden text-right text-muted-foreground sm:table-cell">
-                  {member.vittorie} - {member.sconfitte}
-                </TableCell>
-                <TableCell className="hidden text-right text-muted-foreground md:table-cell">
-                  {formatWinRate(member.vittorie, member.sconfitte)}
-                </TableCell>
-                <TableCell className="hidden text-right text-muted-foreground lg:table-cell">
-                  {member.data_ultima_partita
-                    ? formatDate(member.data_ultima_partita)
-                    : "—"}
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
@@ -149,6 +215,12 @@ export function MembersTable({
                       >
                         <Pencil className="h-4 w-4" />
                         Modifica
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleSendCredentials(member)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Invia credenziali
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
