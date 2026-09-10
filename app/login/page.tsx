@@ -8,22 +8,30 @@ export const metadata = {
   title: "Accedi",
 };
 
+/**
+ * The login form is intentionally anchored to the top of the viewport: on
+ * phones the on-screen keyboard covers a big part of the screen, so the
+ * username/password fields must stay visible while typing. The branding moves
+ * below the form and the legal links stay pinned to the bottom of the screen.
+ */
 export default function LoginPage() {
   return (
-    <div className="flex min-h-svh w-full items-start justify-center bg-sidebar px-6 py-10 text-sidebar-foreground md:items-center md:p-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-2 text-center">
+    <div className="flex min-h-svh w-full flex-col items-center bg-sidebar px-4 py-4 text-sidebar-foreground sm:px-6 sm:py-10 md:p-10">
+      <main className="flex w-full max-w-sm flex-1 flex-col items-center">
+        <Suspense>
+          <LoginForm className="w-full" />
+        </Suspense>
+        <div className="mt-6 flex flex-col items-center gap-2 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-tennis text-lg font-bold text-tennis-foreground">
             CT
           </span>
-          <h1 className="text-xl font-semibold">{CLUB_NAME}</h1>
+          <h1 className="text-base font-semibold sm:text-xl">{CLUB_NAME}</h1>
           <p className="text-sm text-sidebar-foreground/60">
-            Accedi come socio del circolo
+            Accedi come giocatore del circolo
           </p>
         </div>
-        <Suspense>
-          <LoginForm />
-        </Suspense>
+      </main>
+      <div className="mt-auto w-full max-w-sm">
         <AuthLegalLinks />
       </div>
     </div>
