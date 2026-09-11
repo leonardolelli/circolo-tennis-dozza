@@ -75,6 +75,7 @@ export async function getCurrentSocioPublic(): Promise<SocioPublic | null> {
     congelato: socio.congelato,
     data_ultima_partita: socio.data_ultima_partita,
     created_at: socio.created_at,
+    disponibilita: socio.disponibilita,
   };
 }
 

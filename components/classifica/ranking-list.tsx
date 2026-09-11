@@ -153,11 +153,6 @@ export function RankingList({
         open={isChallengeOpen}
         onOpenChange={setIsChallengeOpen}
         opponent={selectedOpponent}
-        requesterName={
-          currentSocio
-            ? `${currentSocio.nome} ${currentSocio.cognome}`.trim()
-            : ""
-        }
       />
 
       <Dialog open={blockedMessage !== null} onOpenChange={(open) => !open && setBlockedMessage(null)}>

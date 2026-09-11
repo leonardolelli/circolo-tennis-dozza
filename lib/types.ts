@@ -20,6 +20,7 @@ export type SocioPublic = Pick<
   | "congelato"
   | "data_ultima_partita"
   | "created_at"
+  | "disponibilita"
 >;
 
 export type Partita = Database["public"]["Tables"]["partite"]["Row"];
@@ -35,7 +36,6 @@ export type SocioAdmin = SocioPublic & {
   telefono: string;
   punti_iniziali: number;
   username: string;
-  user_id: string | null;
   is_admin: boolean;
   password: string | null;
 };

@@ -49,7 +49,7 @@ async function DashboardContent() {
     supabase
       .from("soci")
       .select(
-        "id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
+        "id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at, disponibilita",
       ),
     supabase.from("partite").select("*", { count: "exact", head: true }),
     supabase

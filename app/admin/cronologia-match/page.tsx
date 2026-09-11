@@ -75,7 +75,7 @@ async function AdminCronologiaContent({
     matchesQuery.order("data", { ascending: sort === "asc" }).range(from, to),
     supabase
       .from("soci")
-      .select("id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at")
+      .select("id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at, disponibilita")
       .order("cognome", { ascending: true }),
   ]);
 

@@ -6,11 +6,12 @@ import { calculateEloDelta } from "@/lib/elo";
 import { getEloParams } from "@/lib/data/site-settings";
 import {
   addMemberSchema,
+  availabilitySchema,
   updateMemberSchema,
   USERNAME_PATTERN,
 } from "@/lib/validation";
 import { authEmailForUsername } from "@/lib/constants";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireSocio } from "@/lib/auth";
 import type { Database } from "@/lib/database.types";
 import type { ActionResult } from "@/lib/types";
 
@@ -189,6 +190,47 @@ function revalidateMemberPaths() {
   revalidatePath("/admin/cronologia-match");
   revalidatePath("/classifica");
   revalidatePath("/classifica/cronologia");
+}
+
+/**
+ * Saves the availability (free text: days and times the member can play) of
+ * the currently logged-in socio. Member action: the identity always comes
+ * from the session (`requireSocio`), never from a client-supplied id. An
+ * empty value clears the saved availability.
+ */
+export async function updateAvailability(
+  _prevState: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const member = await requireSocio();
+  if (!member.success) {
+    return member;
+  }
+
+  const parsed = availabilitySchema.safeParse(formData.get("disponibilita"));
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Dati non validi.",
+    };
+  }
+
+  const serviceClient = createServiceRoleClient();
+  const { error } = await serviceClient
+    .from("soci")
+    .update({ disponibilita: parsed.data.length > 0 ? parsed.data : null })
+    .eq("id", member.socio.id);
+
+  if (error) {
+    console.error("updateAvailability failed:", error);
+    return {
+      success: false,
+      error: "Impossibile salvare la disponibilità. Riprova.",
+    };
+  }
+
+  revalidateMemberPaths();
+  return { success: true };
 }
 
 function parseCsvText(input: string): string[][] {

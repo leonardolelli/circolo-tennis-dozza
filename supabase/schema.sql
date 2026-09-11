@@ -10,13 +10,19 @@
 --
 -- Security model summary
 -- -----------------------
--- - `anon` / `authenticated` (the public API keys used by the browser and by
---   Server Components) can only ever READ data, and only the public-safe
---   columns of `soci` (id, nome, cognome, punti, vittorie, sconfitte,
---   congelato, data_ultima_partita, created_at). Sensitive columns
---   (`telefono`, `punti_iniziali`, `username`, `user_id`, `is_admin`) are
---   never readable by anon/authenticated - only the service_role sees them
---   (used internally by Server Components/Actions for admin screens).
+-- - `anon` has NO access to member data: `soci` and `partite` are
+--   members-only (the ranking/history area requires a login). `authenticated`
+--   sessions that are linked to a `soci` row (see `is_linked_member()`) can
+--   READ `soci`, but only its public-safe columns
+--   (id, nome, cognome, punti, vittorie, sconfitte, congelato,
+--   data_ultima_partita, created_at, disponibilita). Sensitive columns
+--   (`telefono`, `punti_iniziali`, `username`, `user_id`, `is_admin`,
+--   `password`) are never readable by anon/authenticated - only the
+--   service_role sees them (used internally by Server Components/Actions for
+--   admin screens).
+-- - `sponsor` is publicly readable (homepage grid) but writable only through
+--   the service_role (server-only): no write grants or policies exist for
+--   anon/authenticated, so a logged-in member can never alter the homepage.
 -- - All writes (adding a member, recording a match, requesting a WhatsApp
 --   challenge) go through Next.js Server Actions that use the service_role
 --   key (a server-only secret) AFTER performing their own authorization
@@ -59,6 +65,12 @@ create table if not exists public.soci (
   -- manager can always see it in the CSV export. NEVER granted to
   -- anon/authenticated; only the service_role reads it.
   password text,
+  -- Free-text availability published by the member (days and times they can
+  -- play). Readable by logged-in members so opponents see it in the challenge
+  -- dialog. 150 characters max (also validated in lib/validation.ts).
+  disponibilita text check (
+    disponibilita is null or char_length(disponibilita) <= 150
+  ),
   vittorie integer not null default 0 check (vittorie >= 0),
   sconfitte integer not null default 0 check (sconfitte >= 0),
   congelato boolean not null default false,
@@ -95,6 +107,11 @@ alter table public.soci
   add column if not exists is_admin boolean not null default false,
   add column if not exists password text;
 
+-- Member availability (free text: days and times they can play). Readable to
+-- logged-in members so the challenge dialog can show it to the opponent.
+alter table public.soci
+  add column if not exists disponibilita text;
+
 -- Existing rows (already-populated database) have no username yet, so the
 -- column stays nullable here; the app enforces a username whenever it creates
 -- or links an account. Canonical usernames/passwords are then provisioned by
@@ -104,6 +121,7 @@ comment on column public.soci.username is 'Lowercase login username; the linked 
 comment on column public.soci.user_id is 'Supabase Auth user id linked to this member (set when the manager provisions the account).';
 comment on column public.soci.is_admin is 'Grants access to the /admin area; admins are also club members (soci rows).';
 comment on column public.soci.password is 'Plaintext login password, kept reversible for the manager CSV export (by design). Server-only access.';
+comment on column public.soci.disponibilita is 'Free-text availability (days/times) published by the member; shown to opponents in the challenge dialog. Max 150 characters.';
 
 create unique index if not exists soci_username_key on public.soci (username);
 create unique index if not exists soci_user_id_key on public.soci (user_id);
@@ -223,53 +241,83 @@ alter table public.partite enable row level security;
 alter table public.sponsor enable row level security;
 alter table public.site_settings enable row level security;
 
--- soci: anon/authenticated may only SELECT, and only the public-safe columns.
--- Sensitive columns (`telefono`, `punti_iniziali`, `username`, `user_id`,
--- `is_admin`) are withheld from everyone except the service_role (used by
--- Server Components/Actions for admin screens, e.g. /admin/soci). Column-
--- privilege restrictions sit on top of row level security, so a mistaken
--- `select *` from a non-privileged client fails loudly instead of silently
--- leaking data.
+-- -----------------------------------------------------------------------------
+-- is_linked_member(): true when the current auth session belongs to a user
+-- linked to a `soci` row (i.e. a real club member, not merely any Supabase
+-- Auth account). The read policies below use it, so the members-only data
+-- stays members-only even if public sign-ups were left enabled in the
+-- Supabase dashboard (an account with no linked socio can still be created
+-- but cannot read anything).
+-- SECURITY DEFINER so the lookup can read `soci.user_id` without triggering
+-- the table's own RLS policy (avoids recursion); search_path is pinned.
+-- -----------------------------------------------------------------------------
+create or replace function public.is_linked_member()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.soci s where s.user_id = auth.uid()
+  );
+$$;
+
+comment on function public.is_linked_member() is 'True when the current auth session is linked to a soci row (a real club member).';
+
+revoke all on function public.is_linked_member() from public;
+grant execute on function public.is_linked_member() to authenticated;
+
+-- soci: members-only. The ranking (names, points, availability) is reserved
+-- to logged-in members, so `anon` has no access at all; `authenticated` may
+-- only SELECT the public-safe columns. Sensitive columns (`telefono`,
+-- `punti_iniziali`, `username`, `user_id`, `is_admin`, `password`) are
+-- withheld from everyone except the service_role (used by Server
+-- Components/Actions for admin screens, e.g. /admin/soci). Column-privilege
+-- restrictions sit on top of row level security, so a mistaken `select *`
+-- from a non-privileged client fails loudly instead of silently leaking data.
 revoke all on table public.soci from anon, authenticated;
 grant select (
-  id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at
-) on table public.soci to anon, authenticated;
+  id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at, disponibilita
+) on table public.soci to authenticated;
 
 DROP POLICY IF EXISTS soci_public_read ON public.soci;
-create policy "soci_public_read" on public.soci
-  for select to anon, authenticated
-  using (true);
+DROP POLICY IF EXISTS soci_member_read ON public.soci;
+create policy "soci_member_read" on public.soci
+  for select to authenticated
+  using (public.is_linked_member());
 
 -- No insert/update/delete policies for anon/authenticated: writes only ever
 -- happen via Server Actions using the service_role key, which bypasses RLS
 -- after the action has performed its own authorization check.
 
--- partite: fully public read (match history has no sensitive data).
+-- partite: members-only read (the history pages live inside /classifica).
 revoke all on table public.partite from anon, authenticated;
-grant select on table public.partite to anon, authenticated;
+grant select on table public.partite to authenticated;
 
 DROP POLICY IF EXISTS partite_public_read ON public.partite;
-create policy "partite_public_read" on public.partite
-  for select to anon, authenticated
-  using (true);
+DROP POLICY IF EXISTS partite_member_read ON public.partite;
+create policy "partite_member_read" on public.partite
+  for select to authenticated
+  using (public.is_linked_member());
 
--- sponsor: fully public read. Writes are allowed for authenticated (admin)
--- sessions so sponsors can be managed from the Supabase dashboard or a
--- future admin screen, without needing the service_role key.
+-- sponsor: publicly readable (homepage logo grid) but writable only through
+-- the service_role (server-only). No write grants or policies exist for
+-- anon/authenticated, so a logged-in member can never modify the homepage
+-- (e.g. point a logo/link at a malicious URL). Sponsors are managed from the
+-- Supabase dashboard or with the service-role key.
 revoke all on table public.sponsor from anon, authenticated;
 grant select on table public.sponsor to anon, authenticated;
-grant insert, update, delete on table public.sponsor to authenticated;
 
 DROP POLICY IF EXISTS sponsor_public_read ON public.sponsor;
 create policy "sponsor_public_read" on public.sponsor
   for select to anon, authenticated
   using (true);
 
+-- Drop the legacy permissive write policy (and its grant above) if it was
+-- already applied to an existing database. This is the security fix:
+-- previously ANY authenticated session could insert/update/delete sponsors.
 DROP POLICY IF EXISTS sponsor_authenticated_write ON public.sponsor;
-create policy "sponsor_authenticated_write" on public.sponsor
-  for all to authenticated
-  using (true)
-  with check (true);
 
 -- site_settings: publicly readable so the maintenance banner can be shown to
 -- every visitor; writes still happen only through admin-authenticated server

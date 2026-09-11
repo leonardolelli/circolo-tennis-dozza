@@ -15,7 +15,7 @@ export const getRankedMembers = cache(async (): Promise<SocioPublic[]> => {
   const { data, error } = await supabase
     .from("soci")
     .select(
-      "id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
+      "id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at, disponibilita",
     )
     .order("punti", { ascending: false });
 

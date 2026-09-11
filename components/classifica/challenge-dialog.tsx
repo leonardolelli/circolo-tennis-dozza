@@ -19,8 +19,6 @@ interface ChallengeConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   opponent: SocioPublic | null;
-  /** Display name of the logged-in socio sending the challenge. */
-  requesterName: string;
 }
 
 /**
@@ -36,7 +34,6 @@ export function ChallengeDialog({
   open,
   onOpenChange,
   opponent,
-  requesterName,
 }: ChallengeConfirmDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -63,8 +60,14 @@ export function ChallengeDialog({
           <DialogDescription>
             {opponent && (
               <>
-                Verrà aperto WhatsApp per proporre una partita a{" "}
-                {opponent.nome} {opponent.cognome} a nome di {requesterName}.
+                Disponibilità di {opponent.nome} {opponent.cognome}:{" "}
+                {opponent.disponibilita?.trim() ? (
+                  <span className="font-semibold text-foreground">
+                    {opponent.disponibilita}
+                  </span>
+                ) : (
+                  <>non ha ancora indicato la sua disponibilità.</>
+                )}
               </>
             )}
           </DialogDescription>

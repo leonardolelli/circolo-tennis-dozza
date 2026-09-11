@@ -1,12 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, safeInternalPath } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -47,8 +46,12 @@ export function LoginForm({
       });
       if (error) throw error;
 
-      const redirect = searchParams.get("redirect");
-      const path = redirect ?? (await getPostLoginPath());
+      // Only accept a same-origin relative path for `?redirect=`,
+      // otherwise fall back to the role-based landing page. This prevents an
+      // open redirect (e.g. /login?redirect=https://evil.com).
+      const path =
+        safeInternalPath(searchParams.get("redirect")) ??
+        (await getPostLoginPath());
 
       // Navigate with a full page load instead of the client-side router: the
       // fresh session cookie is guaranteed to be sent with the next request
