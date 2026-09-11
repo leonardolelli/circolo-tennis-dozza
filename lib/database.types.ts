@@ -31,6 +31,7 @@ export interface Database {
           user_id: string | null;
           is_admin: boolean;
           password: string | null;
+          disponibilita: string | null;
           vittorie: number;
           sconfitte: number;
           congelato: boolean;
@@ -48,6 +49,7 @@ export interface Database {
           user_id?: string | null;
           is_admin?: boolean;
           password?: string | null;
+          disponibilita?: string | null;
           vittorie?: number;
           sconfitte?: number;
           congelato?: boolean;
@@ -65,6 +67,7 @@ export interface Database {
           user_id?: string | null;
           is_admin?: boolean;
           password?: string | null;
+          disponibilita?: string | null;
           vittorie?: number;
           sconfitte?: number;
           congelato?: boolean;

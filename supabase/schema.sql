@@ -13,7 +13,7 @@
 -- - `anon` / `authenticated` (the public API keys used by the browser and by
 --   Server Components) can only ever READ data, and only the public-safe
 --   columns of `soci` (id, nome, cognome, punti, vittorie, sconfitte,
---   congelato, data_ultima_partita, created_at). Sensitive columns
+--   congelato, data_ultima_partita, created_at, disponibilita). Sensitive columns
 --   (`telefono`, `punti_iniziali`, `username`, `user_id`, `is_admin`) are
 --   never readable by anon/authenticated - only the service_role sees them
 --   (used internally by Server Components/Actions for admin screens).
@@ -59,6 +59,12 @@ create table if not exists public.soci (
   -- manager can always see it in the CSV export. NEVER granted to
   -- anon/authenticated; only the service_role reads it.
   password text,
+  -- Free-text availability published by the member (days and times they can
+  -- play). Publicly readable so opponents see it in the challenge dialog.
+  -- 150 characters max (also validated in lib/validation.ts).
+  disponibilita text check (
+    disponibilita is null or char_length(disponibilita) <= 150
+  ),
   vittorie integer not null default 0 check (vittorie >= 0),
   sconfitte integer not null default 0 check (sconfitte >= 0),
   congelato boolean not null default false,
@@ -95,6 +101,11 @@ alter table public.soci
   add column if not exists is_admin boolean not null default false,
   add column if not exists password text;
 
+-- Member availability (free text: days and times they can play). Publicly
+-- readable so the challenge dialog can show it to the opponent.
+alter table public.soci
+  add column if not exists disponibilita text;
+
 -- Existing rows (already-populated database) have no username yet, so the
 -- column stays nullable here; the app enforces a username whenever it creates
 -- or links an account. Canonical usernames/passwords are then provisioned by
@@ -104,6 +115,7 @@ comment on column public.soci.username is 'Lowercase login username; the linked 
 comment on column public.soci.user_id is 'Supabase Auth user id linked to this member (set when the manager provisions the account).';
 comment on column public.soci.is_admin is 'Grants access to the /admin area; admins are also club members (soci rows).';
 comment on column public.soci.password is 'Plaintext login password, kept reversible for the manager CSV export (by design). Server-only access.';
+comment on column public.soci.disponibilita is 'Free-text availability (days/times) published by the member; shown to opponents in the challenge dialog. Max 150 characters.';
 
 create unique index if not exists soci_username_key on public.soci (username);
 create unique index if not exists soci_user_id_key on public.soci (user_id);
@@ -232,7 +244,7 @@ alter table public.site_settings enable row level security;
 -- leaking data.
 revoke all on table public.soci from anon, authenticated;
 grant select (
-  id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at
+  id, nome, cognome, punti, vittorie, sconfitte, congelato, data_ultima_partita, created_at, disponibilita
 ) on table public.soci to anon, authenticated;
 
 DROP POLICY IF EXISTS soci_public_read ON public.soci;

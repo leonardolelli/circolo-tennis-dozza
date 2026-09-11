@@ -5,6 +5,7 @@ import { Award, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddMatchDialog } from "@/components/classifica/add-match-dialog";
+import { AvailabilityDialog } from "@/components/classifica/availability-dialog";
 import { ClassificaBrowser } from "@/components/classifica/classifica-browser";
 import { getRankedMembers } from "@/lib/data/members";
 import { getCategoryConfig } from "@/lib/data/site-settings";
@@ -79,7 +80,10 @@ async function ClassificaActions() {
         </Link>
       </Button>
       {currentSocio && (
-        <AddMatchDialog players={activeMembers} currentSocio={currentSocio} />
+        <>
+          <AvailabilityDialog currentSocio={currentSocio} />
+          <AddMatchDialog players={activeMembers} currentSocio={currentSocio} />
+        </>
       )}
     </div>
   );

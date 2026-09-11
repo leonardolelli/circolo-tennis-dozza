@@ -82,6 +82,17 @@ export const challengeSchema = z.object({
 });
 export type ChallengeInput = z.infer<typeof challengeSchema>;
 
+/**
+ * Free-text availability (days/times a member is available to play) published
+ * by the member. Max 150 characters including spaces; an empty string clears
+ * the saved value. The requester is always the current session socio.
+ */
+export const availabilitySchema = z
+  .string()
+  .trim()
+  .max(150, "La disponibilità non può superare 150 caratteri.");
+export type AvailabilityInput = z.infer<typeof availabilitySchema>;
+
 export const adminMatchSchema = z
   .object({
     id: uuidSchema,

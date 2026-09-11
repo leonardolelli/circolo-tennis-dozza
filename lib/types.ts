@@ -20,6 +20,7 @@ export type SocioPublic = Pick<
   | "congelato"
   | "data_ultima_partita"
   | "created_at"
+  | "disponibilita"
 >;
 
 export type Partita = Database["public"]["Tables"]["partite"]["Row"];
