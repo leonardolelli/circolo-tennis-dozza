@@ -102,9 +102,9 @@ export function AddMatchDialog({
         </DialogHeader>
 
         {state.step === 1 && (
-          <div className="flex flex-col gap-4">
-            <p className="text-lg font-semibold tracking-tight">
-              Contro chi hai giocato?
+          <div className="flex flex-col gap-3">
+            <p className="text-base font-semibold tracking-tight">
+              Digita e seleziona contro chi hai giocato
             </p>
             <PlayerCombobox
               players={players}
@@ -131,17 +131,17 @@ export function AddMatchDialog({
         )}
 
         {state.step === 2 && (
-          <div className="flex flex-col gap-4">
-            <p className="text-lg font-semibold tracking-tight">
+          <div className="flex flex-col gap-3">
+            <p className="text-base font-semibold tracking-tight">
               Chi ha vinto la partita?
             </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setState((s) => ({ ...s, outcome: "win" }))}
                 aria-pressed={state.outcome === "win"}
                 className={cn(
-                  "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
+                  "rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors",
                   state.outcome === "win"
                     ? "border-tennis bg-tennis/10 text-tennis"
                     : "hover:bg-accent",
@@ -154,7 +154,7 @@ export function AddMatchDialog({
                 onClick={() => setState((s) => ({ ...s, outcome: "loss" }))}
                 aria-pressed={state.outcome === "loss"}
                 className={cn(
-                  "rounded-lg border px-4 py-3 text-sm font-semibold transition-colors",
+                  "rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors",
                   state.outcome === "loss"
                     ? "border-tennis bg-tennis/10 text-tennis"
                     : "hover:bg-accent",

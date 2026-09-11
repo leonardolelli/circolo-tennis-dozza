@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -20,6 +28,15 @@ interface PlayerComboboxProps {
   disabled?: boolean;
 }
 
+/** Max height of the dropdown list in pixels (roughly 8 rows on mobile). */
+const LIST_MAX_HEIGHT = 288;
+/** Height kept for the list so a few rows always stay visible. */
+const LIST_MIN_HEIGHT = 160;
+/** Gap between the input and the list. */
+const LIST_OFFSET = 4;
+/** Safe distance from the viewport edges. */
+const VIEWPORT_MARGIN = 8;
+
 /**
  * Type-ahead member search. Filters the already-loaded public member list
  * in memory (no network round-trip per keystroke), which keeps it instant
@@ -35,10 +52,12 @@ export function PlayerCombobox({
   disabled,
 }: PlayerComboboxProps) {
   const inputId = useId();
+  const anchorRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(
     value ? `${value.nome} ${value.cognome}` : "",
   );
   const [isOpen, setIsOpen] = useState(false);
+  const [listStyle, setListStyle] = useState<CSSProperties | null>(null);
   const pointerIntentRef = useRef(false);
 
   useEffect(() => {
@@ -85,10 +104,53 @@ export function PlayerCombobox({
       .slice(0, 8);
   }, [players, query, excludeId]);
 
+  // The list uses `position: fixed` so it can overflow the modal body: per the
+  // CSS spec a fixed box is not clipped by the `overflow` of ancestors below
+  // its containing block (the viewport), which the scrollable modal body would
+  // otherwise do. Because of that we position it manually, keeping it inside
+  // the viewport and flipping it above the input when there is not enough room
+  // below. It must stay in the modal's DOM subtree (no portal) so the modal
+  // still treats taps on it as "inside" and does not close.
+  const updateListStyle = useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_MARGIN;
+    const spaceAbove = rect.top - VIEWPORT_MARGIN;
+    const openUp = spaceBelow < LIST_MIN_HEIGHT && spaceAbove > spaceBelow;
+    const available = Math.max(
+      openUp ? spaceAbove : spaceBelow,
+      LIST_MIN_HEIGHT,
+    );
+    setListStyle({
+      position: "fixed",
+      left: Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(rect.left, window.innerWidth - rect.width - VIEWPORT_MARGIN),
+      ),
+      width: rect.width,
+      maxHeight: Math.min(LIST_MAX_HEIGHT, available),
+      ...(openUp
+        ? { bottom: window.innerHeight - rect.top + LIST_OFFSET }
+        : { top: rect.bottom + LIST_OFFSET }),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateListStyle();
+    window.addEventListener("resize", updateListStyle);
+    window.addEventListener("scroll", updateListStyle, true);
+    return () => {
+      window.removeEventListener("resize", updateListStyle);
+      window.removeEventListener("scroll", updateListStyle, true);
+    };
+  }, [isOpen, updateListStyle]);
+
   return (
     <div className="flex flex-col gap-1.5">
       {label ? <Label htmlFor={inputId}>{label}</Label> : null}
-      <div className="relative">
+      <div ref={anchorRef} className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={inputId}
@@ -117,10 +179,11 @@ export function PlayerCombobox({
             if (value) onChange(null);
           }}
         />
-        {isOpen && candidates.length > 0 && (
+        {isOpen && candidates.length > 0 && listStyle && (
           <ul
+            style={listStyle}
             onMouseDown={(event) => event.preventDefault()}
-            className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+            className="z-30 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
           >
             {candidates.map((player) => (
               <li key={player.id}>
@@ -148,7 +211,10 @@ export function PlayerCombobox({
           </ul>
         )}
         {isOpen && query.trim().length > 0 && candidates.length === 0 && (
-          <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow-md">
+          <div
+            style={listStyle ?? undefined}
+            className="z-30 rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow-md"
+          >
             Nessun giocatore trovato.
           </div>
         )}
