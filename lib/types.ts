@@ -36,7 +36,6 @@ export type SocioAdmin = SocioPublic & {
   telefono: string;
   punti_iniziali: number;
   username: string;
-  user_id: string | null;
   is_admin: boolean;
   password: string | null;
 };

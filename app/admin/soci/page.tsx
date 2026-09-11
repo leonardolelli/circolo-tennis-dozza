@@ -49,14 +49,15 @@ async function SociContent({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  // Fetch all members once (service-role: telefono/username/user_id/is_admin
-  // are not granted to authenticated sessions); filtering and pagination
-  // happen client-side in MembersBrowser.
+  // Fetch all members once (service-role: telefono/username/is_admin are not
+  // granted to authenticated sessions); filtering and pagination happen
+  // client-side in MembersBrowser. `user_id` is deliberately NOT selected: it
+  // is not needed by the UI and must not reach the browser.
   const serviceClient = createServiceRoleClient();
   const { data, error } = await serviceClient
     .from("soci")
     .select(
-      "id, nome, cognome, telefono, punti, punti_iniziali, username, user_id, is_admin, password, vittorie, sconfitte, congelato, data_ultima_partita, created_at",
+      "id, nome, cognome, telefono, punti, punti_iniziali, username, is_admin, password, vittorie, sconfitte, congelato, data_ultima_partita, created_at, disponibilita",
     )
     .order("punti", { ascending: false })
     .order("cognome", { ascending: true })

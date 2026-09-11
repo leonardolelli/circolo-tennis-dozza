@@ -49,9 +49,13 @@
 
 ## Modello di sicurezza (riassunto)
 
-- Le chiavi pubbliche (`anon`) possono solo leggere; per `soci` vedono unicamente
-  le colonne pubbliche. I dati sensibili (`telefono`, `username`, `user_id`,
-  `is_admin`) sono leggibili solo con la chiave `service_role`.
+- Le chiavi pubbliche (`anon`) non hanno accesso ai dati dei soci: `soci` e
+  `partite` sono leggibili solo dalle sessioni autenticate **collegate a una riga
+  `soci`** (funzione `is_linked_member()` della RLS, area riservata ai soci) e, per
+  `soci`, unicamente nelle colonne pubbliche. I dati sensibili (`telefono`,
+  `username`, `user_id`, `is_admin`, `password`) sono leggibili solo con la chiave
+  `service_role`. La tabella `sponsor` è pubblica in lettura ma scrivibile solo
+  con la chiave `service_role` (nessun grant di scrittura per `anon`/`authenticated`).
 - Tutti gli account (soci e admin) sono collegati a una riga `soci` tramite
   `user_id`; l'identità delle azioni (registrare un risultato, sfidare) viene
   SEMPRE derivata dalla sessione server-side, mai da input del client.
@@ -71,7 +75,6 @@ app/
   (main)/             Home, Classifica, Cronologia (con Sidebar/Bottom Nav)
   admin/               Dashboard e gestione soci, protette a admin-soci
   login/               Accesso soci e amministratori (username + password)
-  auth/                Flussi di conferma/reset (non usati per la password)
   actions/             Server Actions (soci, partite, sfide WhatsApp, account)
 components/
   classifica/          Ranking, sfida one-tap, wizard "aggiungi risultato"
